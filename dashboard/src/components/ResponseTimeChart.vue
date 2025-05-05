@@ -2,19 +2,15 @@
   <div class="chart-container">
     <h3>{{ title }}</h3>
     <div class="kpi-value">{{ currentValue }}<span class="unit">{{ unit }}</span></div>
-    <div class="response-time-bars">
-      <div 
-        v-for="(value, i) in data" 
-        :key="i" 
-        class="response-time-bar"
-        :style="{ height: `${value / maxValue * 100}%` }"
-      ></div>
-    </div>
+    <div ref="chartContainer" class="echarts-container"></div>
   </div>
 </template>
 
 <script>
-export default {
+import { defineComponent, ref, onMounted, onUnmounted, watch } from 'vue';
+import * as echarts from 'echarts';
+
+export default defineComponent({
   name: 'ResponseTimeChart',
   props: {
     title: {
@@ -37,8 +33,157 @@ export default {
       type: String,
       default: 'ms'
     }
+  },
+  setup(props) {
+    const chartContainer = ref(null);
+    let chartInstance = null;
+
+    const initChart = () => {
+      if (!chartContainer.value) return;
+      
+      // Crear instancia de ECharts
+      chartInstance = echarts.init(chartContainer.value);
+      
+      // Generar etiquetas para el eje X (últimos N minutos)
+      const labels = [];
+      for (let i = props.data.length - 1; i >= 0; i--) {
+        labels.push(`-${i}m`);
+      }
+      
+      // Configuración del gráfico
+      const option = {
+        grid: {
+          top: 10,
+          right: 10,
+          bottom: 20,
+          left: 40,
+          containLabel: true
+        },
+        xAxis: {
+          type: 'category',
+          data: labels,
+          axisLine: {
+            lineStyle: {
+              color: 'rgba(255, 255, 255, 0.2)'
+            }
+          },
+          axisLabel: {
+            color: '#aaa',
+            fontSize: 10
+          }
+        },
+        yAxis: {
+          type: 'value',
+          min: 0,
+          max: props.maxValue,
+          axisLine: {
+            lineStyle: {
+              color: 'rgba(255, 255, 255, 0.2)'
+            }
+          },
+          splitLine: {
+            lineStyle: {
+              color: 'rgba(255, 255, 255, 0.1)'
+            }
+          },
+          axisLabel: {
+            color: '#aaa',
+            fontSize: 10
+          }
+        },
+        series: [
+          {
+            data: props.data,
+            type: 'line',
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 6,
+            lineStyle: {
+              color: '#F08A24',
+              width: 3
+            },
+            itemStyle: {
+              color: '#F08A24'
+            },
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                {
+                  offset: 0,
+                  color: 'rgba(240, 138, 36, 0.5)'
+                },
+                {
+                  offset: 1,
+                  color: 'rgba(240, 138, 36, 0.1)'
+                }
+              ])
+            }
+          }
+        ],
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          borderColor: '#F08A24',
+          textStyle: {
+            color: '#fff'
+          },
+          formatter: function(params) {
+            return `${params[0].value}${props.unit}`;
+          }
+        },
+        animation: true
+      };
+      
+      // Aplicar configuración
+      chartInstance.setOption(option);
+    };
+
+    // Actualizar el gráfico cuando cambian los datos
+    watch(() => props.data, () => {
+      if (chartInstance) {
+        const labels = [];
+        for (let i = props.data.length - 1; i >= 0; i--) {
+          labels.push(`-${i}m`);
+        }
+        
+        chartInstance.setOption({
+          xAxis: {
+            data: labels
+          },
+          series: [{
+            data: props.data
+          }]
+        });
+      }
+    }, { deep: true });
+
+    // Manejar el redimensionamiento
+    const handleResize = () => {
+      if (chartInstance) {
+        chartInstance.resize();
+      }
+    };
+
+    onMounted(() => {
+      // Inicializar el gráfico después de que el DOM esté listo
+      setTimeout(() => {
+        initChart();
+        window.addEventListener('resize', handleResize);
+      }, 300);
+    });
+
+    onUnmounted(() => {
+      // Limpiar cuando el componente se desmonta
+      if (chartInstance) {
+        chartInstance.dispose();
+      }
+      window.removeEventListener('resize', handleResize);
+    });
+
+    return {
+      chartContainer
+    };
   }
-}
+});
 </script>
 
 <style scoped>
@@ -72,28 +217,15 @@ h3 {
   margin-left: 2px;
 }
 
-.response-time-bars {
+.echarts-container {
   flex: 1;
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 150px;
-  max-height: 150px;
-  overflow: hidden;
-}
-
-.response-time-bar {
-  flex: 1;
-  background-color: #F08A24;
-  border-radius: 4px 4px 0 0;
-  min-height: 4px;
-  transition: height 0.3s ease;
+  width: 100%;
+  min-height: 150px;
 }
 
 @media (min-width: 768px) {
-  .response-time-bars {
-    height: 200px;
-    max-height: 200px;
+  .echarts-container {
+    min-height: 200px;
   }
 }
 </style>
