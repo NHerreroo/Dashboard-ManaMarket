@@ -1,6 +1,6 @@
 <template>
   <ion-page>
-    <ion-header>
+    <ion-header :translucent="true">
       <ion-toolbar class="dark-toolbar">
         <ion-buttons slot="start">
           <ion-menu-button color="light"></ion-menu-button>
@@ -12,20 +12,31 @@
     <ion-content class="dark-content">
       <div class="dashboard-container">
         <!-- Grid principal del Dashboard -->
-        <ion-grid fixed>
+        <ion-grid>
           <!-- Fila 1: KPIs principales -->
           <ion-row>
-            <ion-col size="12" size-md="4">
+            <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
-                <!-- 1. Gráfico personalizado (componente propio) -->
-                <response-time-chart 
-                  :data="responseTimeData" 
-                  :current-value="responseTime"
-                />
+                <!-- 1. Tiempo medio de respuesta -->
+                <div class="chart-container">
+                  <h3>Tiempo medio de respuesta</h3>
+                  <div class="kpi-value">245<span class="unit">ms</span></div>
+                  <div class="chart-wrapper">
+                    <div class="response-time-bars">
+                      <div 
+                        v-for="(value, i) in responseTimeData" 
+                        :key="i" 
+                        class="response-time-bar"
+                        :style="{ height: `${value / 300 * 100}%` }"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </ion-col>
-            <ion-col size="12" size-md="4">
+            <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
+                <!-- 2. Disponibilidad del sistema -->
                 <div class="chart-container">
                   <div class="chart-header">
                     <h3>Disponibilidad del sistema</h3>
@@ -35,20 +46,21 @@
                     </div>
                   </div>
                   <div class="kpi-value">{{ systemAvailability }}<span class="unit">%</span></div>
-                  <!-- 2. Gráfico de Chart.js en tiempo real -->
                   <div class="chart-wrapper">
                     <canvas ref="availabilityChart"></canvas>
                   </div>
                 </div>
               </div>
             </ion-col>
-            <ion-col size="12" size-md="4">
+            <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
+                <!-- 3. Errores de escaneo -->
                 <div class="chart-container">
-                  <h3>Errores de escaneo</h3>
+                  <h3>Porcentaje de errores de escaneo</h3>
                   <div class="kpi-value">{{ scanErrorRate }}<span class="unit">%</span></div>
-                  <!-- 3. Gráfico de ApexChart -->
-                  <div ref="scanErrorChart" class="chart-wrapper"></div>
+                  <div class="chart-wrapper">
+                    <div ref="scanErrorChart"></div>
+                  </div>
                 </div>
               </div>
             </ion-col>
@@ -56,29 +68,26 @@
 
           <!-- Fila 2: Gráficos adicionales -->
           <ion-row>
-            <ion-col size="12" size-md="8">
+            <ion-col size="12" size-md="6">
               <div class="dashboard-card">
-                <div class="chart-container">
-                  <h3>Tiempo de carga de noticias</h3>
-                  <div class="kpi-value">{{ loadingTime }}<span class="unit">s</span></div>
-                  <!-- 4. Gráfico de EChart -->
-                  <div ref="loadingTimeChart" class="chart-wrapper"></div>
-                </div>
+                <!-- 4. Tiempo de carga de noticias (usando ResponseTimeChart) -->
+                <response-time-chart 
+                  title="Tiempo de carga de noticias"
+                  :data="newsLoadingTimeData" 
+                  :current-value="loadingTime"
+                  :maxValue="3"
+                  unit="s"
+                />
               </div>
             </ion-col>
-            <ion-col size="12" size-md="4">
+            <ion-col size="12" size-md="6">
               <div class="dashboard-card">
+                <!-- 5. Copias de seguridad completadas (CIRCULAR) -->
                 <div class="chart-container">
                   <h3>Copias de seguridad completadas</h3>
                   <div class="kpi-value">{{ backupRate }}<span class="unit">%</span></div>
-                  <!-- 5. Gráfico simple de barras -->
-                  <div class="backup-bars">
-                    <div 
-                      v-for="(value, i) in backupData" 
-                      :key="i" 
-                      class="backup-bar"
-                      :style="{ height: `${value}%` }"
-                    ></div>
+                  <div class="chart-wrapper">
+                    <div ref="backupChart" class="donut-chart-container"></div>
                   </div>
                 </div>
               </div>
@@ -110,9 +119,9 @@ export default defineComponent({
     const availabilityChart = ref(null);
     const scanErrorChart = ref(null);
     const loadingTimeChart = ref(null);
+    const backupChart = ref(null);
     
     // Datos para los KPIs
-    const responseTime = ref(245);
     const systemAvailability = ref(99.8);
     const scanErrorRate = ref(2.3);
     const loadingTime = ref(1.2);
@@ -120,12 +129,15 @@ export default defineComponent({
     
     // Datos para los gráficos
     const responseTimeData = ref([230, 242, 255, 260, 248, 245, 238, 242, 250, 245]);
-    const backupData = ref([85, 90, 95, 100, 92, 96, 98, 94, 90, 96]);
+    const newsLoadingTimeData = ref([
+      1.8, 1.7, 1.9, 1.6, 1.5, 1.4, 1.3, 1.4, 1.5, 1.3
+    ]);
     
     // Variables para los gráficos
     let chartJsInstance = null;
     let apexChartInstance = null;
     let echartsInstance = null;
+    let donutChartInstance = null;
     let updateInterval = null;
     
     // Datos para el gráfico de disponibilidad en tiempo real
@@ -259,94 +271,94 @@ export default defineComponent({
         }
         
         // 3. Inicializar ECharts para el gráfico de tiempo de carga
-        if (loadingTimeChart.value) {
-          echartsInstance = echarts.init(loadingTimeChart.value);
-          const option = {
-            backgroundColor: 'transparent',
-            tooltip: {
-              trigger: 'axis'
-            },
-            grid: {
-              left: '3%',
-              right: '4%',
-              bottom: '3%',
-              containLabel: true
-            },
-            xAxis: {
-              type: 'category',
-              boundaryGap: false,
-              data: Array.from({ length: 30 }, (_, i) => i + 1),
-              axisLine: {
-                lineStyle: {
-                  color: 'rgba(255, 255, 255, 0.3)'
-                }
+        
+        // 4. Inicializar ApexCharts para el gráfico circular de copias de seguridad
+        if (backupChart.value) {
+          const options = {
+            series: [96], // Porcentaje de copias de seguridad completadas
+            chart: {
+              height: '100%',
+              type: 'radialBar',
+              toolbar: {
+                show: false
               },
-              axisLabel: {
-                color: '#aaa'
-              }
+              background: 'transparent'
             },
-            yAxis: {
-              type: 'value',
-              min: 0,
-              max: 3,
-              axisLine: {
-                lineStyle: {
-                  color: 'rgba(255, 255, 255, 0.3)'
-                }
-              },
-              splitLine: {
-                lineStyle: {
-                  color: 'rgba(255, 255, 255, 0.1)'
-                }
-              },
-              axisLabel: {
-                color: '#aaa'
-              }
-            },
-            series: [
-              {
-                name: 'Tiempo de carga (s)',
-                type: 'line',
-                smooth: true,
-                lineStyle: {
-                  width: 3,
-                  color: '#F08A24'
+            plotOptions: {
+              radialBar: {
+                startAngle: -135,
+                endAngle: 135,
+                hollow: {
+                  margin: 0,
+                  size: '70%',
+                  background: 'transparent',
                 },
-                areaStyle: {
-                  color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    {
-                      offset: 0,
-                      color: 'rgba(240, 138, 36, 0.5)'
-                    },
-                    {
-                      offset: 1,
-                      color: 'rgba(240, 138, 36, 0.1)'
+                track: {
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  strokeWidth: '97%',
+                  margin: 5,
+                  dropShadow: {
+                    enabled: false
+                  }
+                },
+                dataLabels: {
+                  name: {
+                    show: false
+                  },
+                  value: {
+                    offsetY: 10,
+                    color: '#F08A24',
+                    fontSize: '26px',
+                    fontWeight: 600,
+                    formatter: function (val) {
+                      return val + '%';
                     }
-                  ])
-                },
-                data: [
-                  1.8, 1.7, 1.9, 1.6, 1.5, 1.4, 1.3, 1.4, 1.5, 1.3,
-                  1.2, 1.3, 1.2, 1.1, 1.2, 1.3, 1.2, 1.1, 1.0, 1.2,
-                  1.1, 1.0, 1.1, 1.2, 1.1, 1.2, 1.3, 1.2, 1.1, 1.2
-                ]
+                  }
+                }
               }
-            ]
+            },
+            fill: {
+              type: 'gradient',
+              gradient: {
+                shade: 'dark',
+                type: 'horizontal',
+                shadeIntensity: 0.5,
+                gradientToColors: ['#F08A24'],
+                inverseColors: true,
+                opacityFrom: 1,
+                opacityTo: 1,
+                stops: [0, 100]
+              }
+            },
+            stroke: {
+              dashArray: 4
+            },
+            colors: ['#F08A24'],
+            labels: ['Completadas']
           };
-          echartsInstance.setOption(option);
+          
+          donutChartInstance = new ApexCharts(backupChart.value, options);
+          donutChartInstance.render();
         }
-      }, 100);
-      
-      // Manejar el redimensionamiento para todos los gráficos
-      const handleResize = () => {
-        if (echartsInstance) {
-          echartsInstance.resize();
-        }
-      };
-      
-      window.addEventListener('resize', handleResize);
-      
-      // Iniciar la actualización en tiempo real para el gráfico de disponibilidad
-      updateInterval = setInterval(updateAvailabilityChart, 3000);
+        
+        // Manejar el redimensionamiento para todos los gráficos
+        const handleResize = () => {
+          if (echartsInstance) {
+            echartsInstance.resize();
+          }
+          if (apexChartInstance) {
+            apexChartInstance.render();
+          }
+          if (donutChartInstance) {
+            donutChartInstance.render();
+          }
+        };
+        
+        window.addEventListener('resize', handleResize);
+        
+        // Iniciar la actualización en tiempo real para el gráfico de disponibilidad
+        updateInterval = setInterval(updateAvailabilityChart, 3000);
+      }, 300);
     });
     
     onUnmounted(() => {
@@ -364,21 +376,24 @@ export default defineComponent({
         apexChartInstance.destroy();
       }
       
+      if (donutChartInstance) {
+        donutChartInstance.destroy();
+      }
+      
       // Eliminar el event listener
       window.removeEventListener('resize', () => {});
     });
     
     return {
-      responseTime,
       systemAvailability,
       scanErrorRate,
       loadingTime,
       backupRate,
       responseTimeData,
-      backupData,
+      newsLoadingTimeData,
       availabilityChart,
       scanErrorChart,
-      loadingTimeChart
+      backupChart
     };
   }
 });
@@ -399,17 +414,18 @@ export default defineComponent({
 .dashboard-container {
   max-width: 100%;
   overflow-x: hidden;
+  padding: 16px;
 }
 
 .dashboard-card {
   background: #1E1E1E;
   border-radius: 8px;
   padding: 16px;
-  height: 250px; /* Altura fija para evitar expansión */
+  height: 300px;
   margin-bottom: 16px;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Evita que el contenido se desborde */
+  overflow: hidden;
 }
 
 .chart-container {
@@ -417,7 +433,7 @@ export default defineComponent({
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Evita que el contenido se desborde */
+  overflow: hidden;
 }
 
 .chart-header {
@@ -482,27 +498,25 @@ h3 {
   }
 }
 
-/* Contenedor para los gráficos con altura fija */
+/* Contenedor para los gráficos */
 .chart-wrapper {
   flex: 1;
-  height: 150px; /* Altura fija para los gráficos */
-  max-height: 150px;
   width: 100%;
   position: relative;
-  overflow: hidden;
+  min-height: 150px;
 }
 
-/* Gráfico de barras para copias de seguridad */
-.backup-bars {
+/* Gráfico de barras para tiempo de respuesta */
+.response-time-bars {
   flex: 1;
   display: flex;
   align-items: flex-end;
   gap: 6px;
-  height: 150px;
-  max-height: 150px;
+  height: 100%;
+  width: 100%;
 }
 
-.backup-bar {
+.response-time-bar {
   flex: 1;
   background-color: #F08A24;
   border-radius: 4px 4px 0 0;
@@ -510,20 +524,16 @@ h3 {
   transition: height 0.3s ease;
 }
 
+/* Contenedor para el gráfico circular */
+.donut-chart-container {
+  width: 100%;
+  height: 100%;
+}
+
 /* Ajustes para pantallas más grandes */
 @media (min-width: 768px) {
   .dashboard-card {
-    height: 300px; /* Un poco más alto en pantallas grandes */
-  }
-  
-  .chart-wrapper {
-    height: 200px;
-    max-height: 200px;
-  }
-  
-  .backup-bars {
-    height: 200px;
-    max-height: 200px;
+    height: 350px;
   }
 }
 </style>
