@@ -70,7 +70,7 @@
             </ion-col>
             <ion-col size="12" size-md="4">
               <div class="dashboard-card">
-                <!-- 5. Gráfico de feedback (AHORA COMO PIE CHART) -->
+                <!-- 5. Gráfico de feedback -->
                 <div class="chart-container">
                   <h3>Respuestas de feedback</h3>
                   <div class="kpi-value">{{ feedbackResponses }}<span class="unit">respuestas</span></div>
@@ -570,7 +570,7 @@ const updateActiveUsersChart = () => {
         // 4. Inicializar ApexCharts para el gráfico de feedback como PIE CHART
         if (feedbackChart.value) {
           const options = {
-            series: [65, 35], // Porcentajes de feedback positivo y negativo
+            series: [90, 10], // Porcentajes de feedback positivo y negativo
             chart: {
               type: 'donut',
               height: '100%',
