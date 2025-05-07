@@ -140,7 +140,8 @@ export default defineComponent({
     let updateActiveUsersInterval = null;
     
     // Datos para el gráfico de usuarios activos en tiempo real
-    const activeUsersData = [3100, 3150, 3180, 3210, 3230, 3245];
+    // Inicializamos con valores más variados para mostrar picos y valles
+    const activeUsersData = [3150, 3220, 3180, 3250, 3190, 3245];
     const timeLabels = [];
 
     // Inicializar etiquetas de tiempo
@@ -156,64 +157,97 @@ export default defineComponent({
     };
     
     // Función para actualizar el gráfico de usuarios activos en tiempo real
-    const updateActiveUsersChart = () => {
-      if (apexChartInstance) {
-        // Obtener el último valor
-        const lastValue = activeUsersData[activeUsersData.length - 1];
-        
-        // Calcular tendencia basada en la hora del día
-        const now = new Date();
-        const hour = now.getHours();
-        const minute = now.getMinutes();
-        
-        // Simular patrones de uso más realistas basados en la hora
-        let trend = 0;
-        
-        // Más usuarios activos durante la tarde/noche (17:00-23:00)
-        if (hour >= 17 && hour < 23) {
-          trend = 15;
-        } 
-        // Menos usuarios por la mañana temprano (0:00-8:00)
-        else if (hour < 8) {
-          trend = -10;
-        } 
-        // Actividad moderada durante el día (8:00-17:00)
-        else {
-          trend = 5;
-        }
-        
-        // Añadir algo de variación aleatoria pero controlada
-        const variation = Math.floor(Math.random() * 10) - 5; // Entre -5 y +5
-        const newValue = Math.max(3000, lastValue + trend + variation);
-        activeUsers.value = newValue;
-        
-        // Actualizar datos manteniendo el historial
-        activeUsersData.push(newValue);
-        
-        // Mantener solo los últimos 30 puntos de datos (2.5 horas si actualizamos cada 5 min)
-        if (activeUsersData.length > 30) {
-          activeUsersData.shift();
-        }
-        
-        // Actualizar etiquetas de tiempo
-        const timeString = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-        timeLabels.push(timeString);
-        if (timeLabels.length > 30) {
-          timeLabels.shift();
-        }
-        
-        // Actualizar el gráfico
-        apexChartInstance.updateSeries([{
-          data: activeUsersData
-        }]);
-        
-        apexChartInstance.updateOptions({
-          xaxis: {
-            categories: timeLabels
+    // Modificar la función updateActiveUsersChart() para mejorar la gestión de datos y visualización
+const updateActiveUsersChart = () => {
+  if (apexChartInstance) {
+    // Obtener el último valor
+    const lastValue = activeUsersData[activeUsersData.length - 1];
+    
+    // Calcular tendencia basada en la hora del día
+    const now = new Date();
+    const hour = now.getHours();
+    
+    // Simular patrones de uso más realistas basados en la hora
+    let baseTrend = 0;
+    
+    // Más usuarios activos durante la tarde/noche (17:00-23:00)
+    if (hour >= 17 && hour < 23) {
+      baseTrend = 15;
+    } 
+    // Menos usuarios por la mañana temprano (0:00-8:00)
+    else if (hour < 8) {
+      baseTrend = -10;
+    } 
+    // Actividad moderada durante el día (8:00-17:00)
+    else {
+      baseTrend = 5;
+    }
+    
+    // Añadir variación aleatoria significativa para crear picos y valles
+    const randomFactor = Math.random();
+    let variation;
+    
+    if (randomFactor < 0.2) {
+      // 20% de probabilidad de una caída significativa
+      variation = Math.floor(Math.random() * -80) - 30;
+    } else if (randomFactor < 0.4) {
+      // 20% de probabilidad de un pico significativo
+      variation = Math.floor(Math.random() * 80) + 30;
+    } else {
+      // 60% de probabilidad de fluctuaciones menores
+      variation = Math.floor(Math.random() * 40) - 20;
+    }
+    
+    // Calcular el nuevo valor con la tendencia base y la variación
+    const newValue = Math.max(3000, Math.min(3500, lastValue + baseTrend + variation));
+    activeUsers.value = newValue;
+    
+    // Actualizar datos manteniendo un número fijo de puntos (12 puntos = 1 minuto en demo)
+    const MAX_POINTS = 12;
+    
+    // Añadir nuevo valor
+    activeUsersData.push(newValue);
+    
+    // Mantener solo los últimos MAX_POINTS puntos
+    if (activeUsersData.length > MAX_POINTS) {
+      activeUsersData.shift();
+    }
+    
+    // Actualizar etiquetas de tiempo
+    const timeString = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+    timeLabels.push(timeString);
+    if (timeLabels.length > MAX_POINTS) {
+      timeLabels.shift();
+    }
+    
+    // Actualizar el gráfico con los nuevos datos
+    apexChartInstance.updateSeries([{
+      data: activeUsersData
+    }]);
+    
+    apexChartInstance.updateOptions({
+      xaxis: {
+        categories: timeLabels
+      },
+      // Mejorar la animación para transiciones más suaves
+      chart: {
+        animations: {
+          enabled: true,
+          easing: 'easeinout',
+          speed: 800,
+          animateGradually: {
+            enabled: true,
+            delay: 150
+          },
+          dynamicAnimation: {
+            enabled: true,
+            speed: 350
           }
-        });
+        }
       }
-    };
+    });
+  }
+};
     
     onMounted(() => {
       // Asegurarse de que los contenedores de gráficos tengan el tamaño correcto
@@ -284,7 +318,18 @@ export default defineComponent({
         initTimeLabels();
 
         // 2. Inicializar ApexCharts para el gráfico de usuarios activos EN TIEMPO REAL
+        // Modificar la inicialización del gráfico ApexCharts para mejorar la visualización
+        // Reemplazar el bloque de inicialización de ApexCharts (dentro del setTimeout)
         if (activeUsersChart.value) {
+          // Inicializar con datos aleatorios más variados
+          activeUsersData.length = 0; // Limpiar array existente
+          const baseValue = 3200;
+          for (let i = 0; i < 12; i++) {
+            // Generar valores iniciales con variación para mostrar un patrón interesante desde el inicio
+            const randomVariation = Math.floor(Math.random() * 300) - 150;
+            activeUsersData.push(baseValue + randomVariation);
+          }
+          
           const options = {
             series: [{
               name: 'Usuarios activos',
@@ -300,9 +345,15 @@ export default defineComponent({
               foreColor: '#aaa',
               animations: {
                 enabled: true,
-                easing: 'linear',
+                easing: 'easeinout',
+                speed: 800,
+                animateGradually: {
+                  enabled: true,
+                  delay: 150
+                },
                 dynamicAnimation: {
-                  speed: 1000
+                  enabled: true,
+                  speed: 350
                 }
               }
             },
@@ -323,6 +374,15 @@ export default defineComponent({
             dataLabels: {
               enabled: false
             },
+            markers: {
+              size: 4,
+              colors: ['#F08A24'],
+              strokeColors: '#fff',
+              strokeWidth: 2,
+              hover: {
+                size: 6
+              }
+            },
             xaxis: {
               categories: timeLabels,
               labels: {
@@ -333,31 +393,73 @@ export default defineComponent({
                 rotateAlways: false,
                 hideOverlappingLabels: true,
                 maxHeight: 50
+              },
+              tooltip: {
+                enabled: false
               }
             },
             yaxis: {
               labels: {
                 style: {
                   colors: '#aaa'
+                },
+                formatter: function(val) {
+                  return val.toFixed(0);
                 }
               },
-              min: function(min) {
-                return min * 0.95;
-              }
+              min: 3000,
+              max: 3500,
+              tickAmount: 5
             },
             grid: {
-              borderColor: 'rgba(255, 255, 255, 0.1)'
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              padding: {
+                top: 0,
+                right: 10,
+                bottom: 0,
+                left: 10
+              },
+              xaxis: {
+                lines: {
+                  show: false
+                }
+              }
             },
             tooltip: {
               theme: 'dark',
               x: {
                 show: true
+              },
+              y: {
+                formatter: function(val) {
+                  return val.toFixed(0) + ' usuarios';
+                }
+              },
+              marker: {
+                show: true
               }
-            }
+            },
+            responsive: [{
+              breakpoint: 576,
+              options: {
+                chart: {
+                  height: '200px'
+                },
+                markers: {
+                  size: 3
+                }
+              }
+            }]
           };
           
           apexChartInstance = new ApexCharts(activeUsersChart.value, options);
           apexChartInstance.render();
+          
+          // Actualizar las etiquetas de tiempo iniciales
+          initTimeLabels();
+          
+          // Actualizar inmediatamente para mostrar datos interesantes desde el inicio
+          updateActiveUsersChart();
         }
         
         // 3. Inicializar ECharts para el gráfico de tasa de conversión
@@ -570,7 +672,9 @@ export default defineComponent({
         
         // Iniciar la actualización en tiempo real para el gráfico de usuarios activos
         // En un entorno real sería cada 5 minutos, pero para demo usamos 5 segundos
-        updateActiveUsersInterval = setInterval(updateActiveUsersChart, 5000);
+        // Modificar el intervalo de actualización para hacerlo más frecuente
+        // Reemplazar la línea del setInterval al final del setTimeout
+        updateActiveUsersInterval = setInterval(updateActiveUsersChart, 2000); // Actualizar cada 2 segundos para una demo más dinámica
       }, 300);
     });
     
