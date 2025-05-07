@@ -38,9 +38,15 @@
             </ion-col>
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
-                <!-- 3. Gráfico de ApexCharts - Usuarios activos en creación de mazos -->
+                <!-- 3. Gráfico de ApexCharts - Usuarios activos en creación de mazos (AHORA EN TIEMPO REAL) -->
                 <div class="chart-container">
-                  <h3>Usuarios activos en creación de mazos</h3>
+                  <div class="chart-header">
+                    <h3>Usuarios activos en creación de mazos</h3>
+                    <div class="live-badge">
+                      <div class="pulse"></div>
+                      <span>En vivo</span>
+                    </div>
+                  </div>
                   <div class="kpi-value">{{ activeUsers }}<span class="unit">usuarios</span></div>
                   <div class="chart-wrapper">
                     <div ref="activeUsersChart"></div>
@@ -64,18 +70,12 @@
             </ion-col>
             <ion-col size="12" size-md="4">
               <div class="dashboard-card">
-                <!-- 5. Gráfico en tiempo real - Número de respuestas de feedback -->
+                <!-- 5. Gráfico de feedback (AHORA COMO PIE CHART) -->
                 <div class="chart-container">
-                  <div class="chart-header">
-                    <h3>Respuestas de feedback</h3>
-                    <div class="live-badge">
-                      <div class="pulse"></div>
-                      <span>En vivo</span>
-                    </div>
-                  </div>
+                  <h3>Respuestas de feedback</h3>
                   <div class="kpi-value">{{ feedbackResponses }}<span class="unit">respuestas</span></div>
                   <div class="chart-wrapper">
-                    <canvas ref="feedbackChart"></canvas>
+                    <div ref="feedbackChart"></div>
                   </div>
                 </div>
               </div>
@@ -137,34 +137,81 @@ export default defineComponent({
     let apexChartInstance = null;
     let echartsInstance = null;
     let feedbackChartInstance = null;
-    let updateInterval = null;
+    let updateActiveUsersInterval = null;
     
-    // Datos para el gráfico de feedback en tiempo real
-    const feedbackData = [42, 38, 45, 50, 55, 60, 58, 62, 67, 70, 75, 80];
-    const timeLabels = ['12:00', '12:05', '12:10', '12:15', '12:20', '12:25', '12:30', '12:35', '12:40', '12:45', '12:50', '12:55'];
+    // Datos para el gráfico de usuarios activos en tiempo real
+    const activeUsersData = [3100, 3150, 3180, 3210, 3230, 3245];
+    const timeLabels = [];
+
+    // Inicializar etiquetas de tiempo
+    const initTimeLabels = () => {
+      timeLabels.length = 0; // Limpiar array
+      const now = new Date();
+      // Crear etiquetas para los últimos 30 minutos en intervalos de 5 minutos
+      for (let i = 5; i >= 0; i--) {
+        const time = new Date(now.getTime() - i * 5 * 60000);
+        const timeString = `${time.getHours()}:${time.getMinutes().toString().padStart(2, '0')}`;
+        timeLabels.push(timeString);
+      }
+    };
     
-    // Función para actualizar el gráfico de feedback en tiempo real
-    const updateFeedbackChart = () => {
-      if (feedbackChartInstance) {
-        // Generar un nuevo valor aleatorio entre -5 y +10 del último valor
-        const lastValue = feedbackData[feedbackData.length - 1];
-        const change = Math.floor(Math.random() * 16) - 5; // Entre -5 y +10
-        const newValue = Math.max(0, lastValue + change);
-        feedbackResponses.value = newValue;
+    // Función para actualizar el gráfico de usuarios activos en tiempo real
+    const updateActiveUsersChart = () => {
+      if (apexChartInstance) {
+        // Obtener el último valor
+        const lastValue = activeUsersData[activeUsersData.length - 1];
         
-        // Actualizar datos y etiquetas
-        feedbackData.push(newValue);
-        feedbackData.shift();
-        
+        // Calcular tendencia basada en la hora del día
         const now = new Date();
+        const hour = now.getHours();
+        const minute = now.getMinutes();
+        
+        // Simular patrones de uso más realistas basados en la hora
+        let trend = 0;
+        
+        // Más usuarios activos durante la tarde/noche (17:00-23:00)
+        if (hour >= 17 && hour < 23) {
+          trend = 15;
+        } 
+        // Menos usuarios por la mañana temprano (0:00-8:00)
+        else if (hour < 8) {
+          trend = -10;
+        } 
+        // Actividad moderada durante el día (8:00-17:00)
+        else {
+          trend = 5;
+        }
+        
+        // Añadir algo de variación aleatoria pero controlada
+        const variation = Math.floor(Math.random() * 10) - 5; // Entre -5 y +5
+        const newValue = Math.max(3000, lastValue + trend + variation);
+        activeUsers.value = newValue;
+        
+        // Actualizar datos manteniendo el historial
+        activeUsersData.push(newValue);
+        
+        // Mantener solo los últimos 30 puntos de datos (2.5 horas si actualizamos cada 5 min)
+        if (activeUsersData.length > 30) {
+          activeUsersData.shift();
+        }
+        
+        // Actualizar etiquetas de tiempo
         const timeString = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
         timeLabels.push(timeString);
-        timeLabels.shift();
+        if (timeLabels.length > 30) {
+          timeLabels.shift();
+        }
         
         // Actualizar el gráfico
-        feedbackChartInstance.data.labels = timeLabels;
-        feedbackChartInstance.data.datasets[0].data = feedbackData;
-        feedbackChartInstance.update();
+        apexChartInstance.updateSeries([{
+          data: activeUsersData
+        }]);
+        
+        apexChartInstance.updateOptions({
+          xaxis: {
+            categories: timeLabels
+          }
+        });
       }
     };
     
@@ -233,12 +280,15 @@ export default defineComponent({
           });
         }
         
-        // 2. Inicializar ApexCharts para el gráfico de usuarios activos
+        // Inicializar etiquetas de tiempo
+        initTimeLabels();
+
+        // 2. Inicializar ApexCharts para el gráfico de usuarios activos EN TIEMPO REAL
         if (activeUsersChart.value) {
           const options = {
             series: [{
               name: 'Usuarios activos',
-              data: [2100, 2300, 2500, 2700, 2900, 3100, 3245]
+              data: activeUsersData
             }],
             chart: {
               type: 'area',
@@ -247,7 +297,14 @@ export default defineComponent({
                 show: false
               },
               background: 'transparent',
-              foreColor: '#aaa'
+              foreColor: '#aaa',
+              animations: {
+                enabled: true,
+                easing: 'linear',
+                dynamicAnimation: {
+                  speed: 1000
+                }
+              }
             },
             colors: ['#F08A24'],
             stroke: {
@@ -267,11 +324,15 @@ export default defineComponent({
               enabled: false
             },
             xaxis: {
-              categories: ['Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct'],
+              categories: timeLabels,
               labels: {
                 style: {
                   colors: '#aaa'
-                }
+                },
+                rotate: -45,
+                rotateAlways: false,
+                hideOverlappingLabels: true,
+                maxHeight: 50
               }
             },
             yaxis: {
@@ -279,13 +340,19 @@ export default defineComponent({
                 style: {
                   colors: '#aaa'
                 }
+              },
+              min: function(min) {
+                return min * 0.95;
               }
             },
             grid: {
               borderColor: 'rgba(255, 255, 255, 0.1)'
             },
             tooltip: {
-              theme: 'dark'
+              theme: 'dark',
+              x: {
+                show: true
+              }
             }
           };
           
@@ -398,54 +465,92 @@ export default defineComponent({
           echartsInstance.setOption(option);
         }
         
-        // 4. Inicializar Chart.js para el gráfico de feedback en tiempo real
+        // 4. Inicializar ApexCharts para el gráfico de feedback como PIE CHART
         if (feedbackChart.value) {
-          const ctx = feedbackChart.value.getContext('2d');
-          feedbackChartInstance = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels: timeLabels,
-              datasets: [{
-                label: 'Respuestas de feedback',
-                data: feedbackData,
-                borderColor: '#F08A24',
-                backgroundColor: 'rgba(240, 138, 36, 0.1)',
-                tension: 0.4,
-                fill: true
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: {
-                  display: false
-                }
+          const options = {
+            series: [65, 35], // Porcentajes de feedback positivo y negativo
+            chart: {
+              type: 'donut',
+              height: '100%',
+              toolbar: {
+                show: false
               },
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  grid: {
-                    color: 'rgba(255, 255, 255, 0.1)'
-                  },
-                  ticks: {
-                    color: '#aaa'
-                  }
-                },
-                x: {
-                  grid: {
-                    color: 'rgba(255, 255, 255, 0.1)'
-                  },
-                  ticks: {
-                    color: '#aaa',
-                    maxRotation: 0,
-                    autoSkip: true,
-                    maxTicksLimit: 6
+              background: 'transparent'
+            },
+            labels: ['Positivo', 'Negativo'],
+            colors: ['#F08A24', '#FF4560'],
+            plotOptions: {
+              pie: {
+                donut: {
+                  size: '55%',
+                  labels: {
+                    show: true,
+                    name: {
+                      show: true,
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      color: '#fff',
+                      offsetY: -10
+                    },
+                    value: {
+                      show: true,
+                      fontSize: '16px',
+                      fontWeight: 400,
+                      color: '#fff',
+                      offsetY: 5,
+                      formatter: function (val) {
+                        return val + '%';
+                      }
+                    },
+                    total: {
+                      show: true,
+                      label: 'Total',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      color: '#fff',
+                      formatter: function () {
+                        return '427';
+                      }
+                    }
                   }
                 }
               }
+            },
+            dataLabels: {
+              enabled: false
+            },
+            legend: {
+              position: 'bottom',
+              horizontalAlign: 'center',
+              fontSize: '12px',
+              labels: {
+                colors: '#aaa'
+              },
+              markers: {
+                width: 12,
+                height: 12,
+                radius: 12
+              },
+              itemMargin: {
+                horizontal: 10,
+                vertical: 0
+              }
+            },
+            stroke: {
+              width: 0
+            },
+            tooltip: {
+              theme: 'dark',
+              y: {
+                formatter: function(val) {
+                  return val + '%';
+                }
+              }
             }
-          });
+          };
+          
+          feedbackChartInstance = new ApexCharts(feedbackChart.value, options);
+          feedbackChartInstance.render();
         }
         
         // Manejar el redimensionamiento para todos los gráficos
@@ -456,19 +561,23 @@ export default defineComponent({
           if (apexChartInstance) {
             apexChartInstance.render();
           }
+          if (feedbackChartInstance) {
+            feedbackChartInstance.render();
+          }
         };
         
         window.addEventListener('resize', handleResize);
         
-        // Iniciar la actualización en tiempo real para el gráfico de feedback
-        updateInterval = setInterval(updateFeedbackChart, 3000);
+        // Iniciar la actualización en tiempo real para el gráfico de usuarios activos
+        // En un entorno real sería cada 5 minutos, pero para demo usamos 5 segundos
+        updateActiveUsersInterval = setInterval(updateActiveUsersChart, 5000);
       }, 300);
     });
     
     onUnmounted(() => {
       // Limpiar el intervalo cuando el componente se desmonta
-      if (updateInterval) {
-        clearInterval(updateInterval);
+      if (updateActiveUsersInterval) {
+        clearInterval(updateActiveUsersInterval);
       }
       
       // Destruir las instancias de los gráficos
@@ -478,6 +587,10 @@ export default defineComponent({
       
       if (apexChartInstance) {
         apexChartInstance.destroy();
+      }
+      
+      if (feedbackChartInstance) {
+        feedbackChartInstance.destroy();
       }
       
       // Eliminar el event listener
