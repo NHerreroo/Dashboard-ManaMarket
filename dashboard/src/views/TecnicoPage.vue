@@ -18,20 +18,13 @@
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
                 <!-- 1. Tiempo medio de respuesta -->
-                <div class="chart-container">
-                  <h3>Tiempo medio de respuesta</h3>
-                  <div class="kpi-value">245<span class="unit">ms</span></div>
-                  <div class="chart-wrapper">
-                    <div class="response-time-bars">
-                      <div 
-                        v-for="(value, i) in responseTimeData" 
-                        :key="i" 
-                        class="response-time-bar"
-                        :style="{ height: `${value / 300 * 100}%` }"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
+                <response-time-chart 
+                  title="Tiempo medio de respuesta"
+                  :data="responseTimeData" 
+                  :current-value="245"
+                  :maxValue="300"
+                  unit="ms"
+                />
               </div>
             </ion-col>
             <ion-col size="12" size-md="6" size-lg="4">
@@ -68,7 +61,7 @@
 
           <!-- Fila 2: Gráficos adicionales -->
           <ion-row>
-            <ion-col size="12" size-md="6">
+            <ion-col size="12" size-md="8">
               <div class="dashboard-card">
                 <!-- 4. Tiempo de carga de noticias (usando ResponseTimeChart) -->
                 <response-time-chart 
@@ -80,7 +73,7 @@
                 />
               </div>
             </ion-col>
-            <ion-col size="12" size-md="6">
+            <ion-col size="12" size-md="4">
               <div class="dashboard-card">
                 <!-- 5. Copias de seguridad completadas (CIRCULAR) -->
                 <div class="chart-container">
@@ -118,7 +111,6 @@ export default defineComponent({
     // Referencias para los gráficos
     const availabilityChart = ref(null);
     const scanErrorChart = ref(null);
-    const loadingTimeChart = ref(null);
     const backupChart = ref(null);
     
     // Datos para los KPIs
@@ -136,7 +128,6 @@ export default defineComponent({
     // Variables para los gráficos
     let chartJsInstance = null;
     let apexChartInstance = null;
-    let echartsInstance = null;
     let donutChartInstance = null;
     let updateInterval = null;
     
@@ -270,8 +261,6 @@ export default defineComponent({
           apexChartInstance.render();
         }
         
-        // 3. Inicializar ECharts para el gráfico de tiempo de carga
-        
         // 4. Inicializar ApexCharts para el gráfico circular de copias de seguridad
         if (backupChart.value) {
           const options = {
@@ -343,9 +332,6 @@ export default defineComponent({
         
         // Manejar el redimensionamiento para todos los gráficos
         const handleResize = () => {
-          if (echartsInstance) {
-            echartsInstance.resize();
-          }
           if (apexChartInstance) {
             apexChartInstance.render();
           }
@@ -368,10 +354,6 @@ export default defineComponent({
       }
       
       // Destruir las instancias de los gráficos
-      if (echartsInstance) {
-        echartsInstance.dispose();
-      }
-      
       if (apexChartInstance) {
         apexChartInstance.destroy();
       }
@@ -504,24 +486,6 @@ h3 {
   width: 100%;
   position: relative;
   min-height: 150px;
-}
-
-/* Gráfico de barras para tiempo de respuesta */
-.response-time-bars {
-  flex: 1;
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 100%;
-  width: 100%;
-}
-
-.response-time-bar {
-  flex: 1;
-  background-color: #F08A24;
-  border-radius: 4px 4px 0 0;
-  min-height: 4px;
-  transition: height 0.3s ease;
 }
 
 /* Contenedor para el gráfico circular */
