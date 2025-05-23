@@ -26,7 +26,7 @@
             </ion-col>
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
-                <!-- 2. Gráfico de Chart.js - Valoración media de usuarios -->
+                <!-- 2. Gráfico de Chart.js - Valoración media de usuarios (RADAR CHART) -->
                 <div class="chart-container">
                   <h3>Valoración media de usuarios</h3>
                   <div class="kpi-value">{{ averageRating }}<span class="unit">/5</span></div>
@@ -38,7 +38,7 @@
             </ion-col>
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
-                <!-- 3. Gráfico de ApexCharts - Usuarios activos en creación de mazos (AHORA EN TIEMPO REAL) -->
+                <!-- 3. Gráfico de ApexCharts - Usuarios activos en creación de mazos (TIEMPO REAL) -->
                 <div class="chart-container">
                   <div class="chart-header">
                     <h3>Usuarios activos en creación de mazos</h3>
@@ -60,7 +60,7 @@
           <ion-row>
             <ion-col size="12" size-md="8">
               <div class="dashboard-card">
-                <!-- 4. Gráfico de ECharts - Tasa de conversión de compradores -->
+                <!-- 4. Gráfico de ECharts - Tasa de conversión de compradores (GAUGE CHART) -->
                 <div class="chart-container">
                   <h3>Tasa de conversión de compradores</h3>
                   <div class="kpi-value">{{ conversionRate }}<span class="unit">%</span></div>
@@ -70,7 +70,7 @@
             </ion-col>
             <ion-col size="12" size-md="4">
               <div class="dashboard-card">
-                <!-- 5. Gráfico de feedback -->
+                <!-- 5. Gráfico de feedback (HEATMAP) -->
                 <div class="chart-container">
                   <h3>Respuestas de feedback</h3>
                   <div class="kpi-value">{{ feedbackResponses }}<span class="unit">respuestas</span></div>
@@ -140,7 +140,6 @@ export default defineComponent({
     let updateActiveUsersInterval = null;
     
     // Datos para el gráfico de usuarios activos en tiempo real
-    // Inicializamos con valores más variados para mostrar picos y valles
     const activeUsersData = [3150, 3220, 3180, 3250, 3190, 3245];
     const timeLabels = [];
 
@@ -157,157 +156,140 @@ export default defineComponent({
     };
     
     // Función para actualizar el gráfico de usuarios activos en tiempo real
-    // Modificar la función updateActiveUsersChart() para mejorar la gestión de datos y visualización
-const updateActiveUsersChart = () => {
-  if (apexChartInstance) {
-    // Obtener el último valor
-    const lastValue = activeUsersData[activeUsersData.length - 1];
-    
-    // Calcular tendencia basada en la hora del día
-    const now = new Date();
-    const hour = now.getHours();
-    
-    // Simular patrones de uso más realistas basados en la hora
-    let baseTrend = 0;
-    
-    // Más usuarios activos durante la tarde/noche (17:00-23:00)
-    if (hour >= 17 && hour < 23) {
-      baseTrend = 15;
-    } 
-    // Menos usuarios por la mañana temprano (0:00-8:00)
-    else if (hour < 8) {
-      baseTrend = -10;
-    } 
-    // Actividad moderada durante el día (8:00-17:00)
-    else {
-      baseTrend = 5;
-    }
-    
-    // Añadir variación aleatoria significativa para crear picos y valles
-    const randomFactor = Math.random();
-    let variation;
-    
-    if (randomFactor < 0.2) {
-      // 20% de probabilidad de una caída significativa
-      variation = Math.floor(Math.random() * -80) - 30;
-    } else if (randomFactor < 0.4) {
-      // 20% de probabilidad de un pico significativo
-      variation = Math.floor(Math.random() * 80) + 30;
-    } else {
-      // 60% de probabilidad de fluctuaciones menores
-      variation = Math.floor(Math.random() * 40) - 20;
-    }
-    
-    // Calcular el nuevo valor con la tendencia base y la variación
-    const newValue = Math.max(3000, Math.min(3500, lastValue + baseTrend + variation));
-    activeUsers.value = newValue;
-    
-    // Actualizar datos manteniendo un número fijo de puntos (12 puntos = 1 minuto en demo)
-    const MAX_POINTS = 12;
-    
-    // Añadir nuevo valor
-    activeUsersData.push(newValue);
-    
-    // Mantener solo los últimos MAX_POINTS puntos
-    if (activeUsersData.length > MAX_POINTS) {
-      activeUsersData.shift();
-    }
-    
-    // Actualizar etiquetas de tiempo
-    const timeString = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-    timeLabels.push(timeString);
-    if (timeLabels.length > MAX_POINTS) {
-      timeLabels.shift();
-    }
-    
-    // Actualizar el gráfico con los nuevos datos
-    apexChartInstance.updateSeries([{
-      data: activeUsersData
-    }]);
-    
-    apexChartInstance.updateOptions({
-      xaxis: {
-        categories: timeLabels
-      },
-      // Mejorar la animación para transiciones más suaves
-      chart: {
-        animations: {
-          enabled: true,
-          easing: 'easeinout',
-          speed: 800,
-          animateGradually: {
-            enabled: true,
-            delay: 150
-          },
-          dynamicAnimation: {
-            enabled: true,
-            speed: 350
-          }
+    const updateActiveUsersChart = () => {
+      if (apexChartInstance) {
+        // Obtener el último valor
+        const lastValue = activeUsersData[activeUsersData.length - 1];
+        
+        // Calcular tendencia basada en la hora del día
+        const now = new Date();
+        const hour = now.getHours();
+        
+        // Simular patrones de uso más realistas basados en la hora
+        let baseTrend = 0;
+        
+        // Más usuarios activos durante la tarde/noche (17:00-23:00)
+        if (hour >= 17 && hour < 23) {
+          baseTrend = 15;
+        } 
+        // Menos usuarios por la mañana temprano (0:00-8:00)
+        else if (hour < 8) {
+          baseTrend = -10;
+        } 
+        // Actividad moderada durante el día (8:00-17:00)
+        else {
+          baseTrend = 5;
         }
+        
+        // Añadir variación aleatoria significativa para crear picos y valles
+        const randomFactor = Math.random();
+        let variation;
+        
+        if (randomFactor < 0.2) {
+          // 20% de probabilidad de una caída significativa
+          variation = Math.floor(Math.random() * -80) - 30;
+        } else if (randomFactor < 0.4) {
+          // 20% de probabilidad de un pico significativo
+          variation = Math.floor(Math.random() * 80) + 30;
+        } else {
+          // 60% de probabilidad de fluctuaciones menores
+          variation = Math.floor(Math.random() * 40) - 20;
+        }
+        
+        // Calcular el nuevo valor con la tendencia base y la variación
+        const newValue = Math.max(3000, Math.min(3500, lastValue + baseTrend + variation));
+        activeUsers.value = newValue;
+        
+        // Actualizar datos manteniendo un número fijo de puntos
+        const MAX_POINTS = 12;
+        
+        // Añadir nuevo valor
+        activeUsersData.push(newValue);
+        
+        // Mantener solo los últimos MAX_POINTS puntos
+        if (activeUsersData.length > MAX_POINTS) {
+          activeUsersData.shift();
+        }
+        
+        // Actualizar etiquetas de tiempo
+        const timeString = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+        timeLabels.push(timeString);
+        if (timeLabels.length > MAX_POINTS) {
+          timeLabels.shift();
+        }
+        
+        // Actualizar el gráfico con los nuevos datos
+        apexChartInstance.updateSeries([{
+          data: activeUsersData
+        }]);
+        
+        apexChartInstance.updateOptions({
+          xaxis: {
+            categories: timeLabels
+          }
+        });
       }
-    });
-  }
-};
+    };
     
     onMounted(() => {
       // Asegurarse de que los contenedores de gráficos tengan el tamaño correcto
       setTimeout(() => {
-        // 1. Inicializar Chart.js para el gráfico de valoración
+        // 1. Inicializar Chart.js para el gráfico de valoración (RADAR CHART)
         if (ratingChart.value) {
           const ctx = ratingChart.value.getContext('2d');
           
-          // Datos de valoraciones (1-5 estrellas)
-          const ratingDistribution = [15, 30, 120, 450, 1200];
-          
           chartJsRatingInstance = new Chart(ctx, {
-            type: 'bar',
+            type: 'radar',
             data: {
-              labels: ['1★', '2★', '3★', '4★', '5★'],
+              labels: ['Usabilidad', 'Diseño', 'Funcionalidad', 'Velocidad', 'Estabilidad'],
               datasets: [{
-                label: 'Valoraciones',
-                data: ratingDistribution,
-                backgroundColor: [
-                  'rgba(255, 99, 132, 0.7)',
-                  'rgba(255, 159, 64, 0.7)',
-                  'rgba(255, 205, 86, 0.7)',
-                  'rgba(75, 192, 192, 0.7)',
-                  'rgba(240, 138, 36, 0.7)'
-                ],
-                borderColor: [
-                  'rgb(255, 99, 132)',
-                  'rgb(255, 159, 64)',
-                  'rgb(255, 205, 86)',
-                  'rgb(75, 192, 192)',
-                  'rgb(240, 138, 36)'
-                ],
-                borderWidth: 1
+                label: 'Valoración',
+                data: [4.8, 4.9, 4.5, 4.6, 4.7],
+                backgroundColor: 'rgba(240, 138, 36, 0.3)',
+                borderColor: '#F08A24',
+                borderWidth: 2,
+                pointBackgroundColor: '#F08A24',
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: '#F08A24'
               }]
             },
             options: {
               responsive: true,
               maintainAspectRatio: false,
-              plugins: {
-                legend: {
-                  display: false
-                }
-              },
               scales: {
-                y: {
-                  beginAtZero: true,
+                r: {
+                  angleLines: {
+                    color: 'rgba(255, 255, 255, 0.1)'
+                  },
                   grid: {
                     color: 'rgba(255, 255, 255, 0.1)'
                   },
-                  ticks: {
-                    color: '#aaa'
-                  }
-                },
-                x: {
-                  grid: {
-                    display: false
+                  pointLabels: {
+                    color: '#aaa',
+                    font: {
+                      size: 10
+                    }
                   },
                   ticks: {
-                    color: '#aaa'
+                    color: '#aaa',
+                    backdropColor: 'transparent',
+                    stepSize: 1,
+                    max: 5,
+                    min: 0
                   }
+                }
+              },
+              plugins: {
+                legend: {
+                  display: false
+                },
+                tooltip: {
+                  backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                  titleColor: '#fff',
+                  bodyColor: '#fff',
+                  borderColor: '#F08A24',
+                  borderWidth: 1
                 }
               }
             }
@@ -317,26 +299,31 @@ const updateActiveUsersChart = () => {
         // Inicializar etiquetas de tiempo
         initTimeLabels();
 
-        // 2. Inicializar ApexCharts para el gráfico de usuarios activos EN TIEMPO REAL
-        // Modificar la inicialización del gráfico ApexCharts para mejorar la visualización
-        // Reemplazar el bloque de inicialización de ApexCharts (dentro del setTimeout)
+        // 2. Inicializar ApexCharts para el gráfico de usuarios activos (CANDLESTICK CHART)
         if (activeUsersChart.value) {
-          // Inicializar con datos aleatorios más variados
-          activeUsersData.length = 0; // Limpiar array existente
+          // Generar datos para candlestick
+          const candleData = [];
           const baseValue = 3200;
+          
           for (let i = 0; i < 12; i++) {
-            // Generar valores iniciales con variación para mostrar un patrón interesante desde el inicio
-            const randomVariation = Math.floor(Math.random() * 300) - 150;
-            activeUsersData.push(baseValue + randomVariation);
+            const open = baseValue + Math.floor(Math.random() * 200) - 100;
+            const close = open + Math.floor(Math.random() * 100) - 50;
+            const low = Math.min(open, close) - Math.floor(Math.random() * 50);
+            const high = Math.max(open, close) + Math.floor(Math.random() * 50);
+            
+            candleData.push({
+              x: timeLabels[i] || `${i}:00`,
+              y: [open, high, low, close]
+            });
           }
           
           const options = {
             series: [{
               name: 'Usuarios activos',
-              data: activeUsersData
+              data: candleData
             }],
             chart: {
-              type: 'area',
+              type: 'candlestick',
               height: '100%',
               toolbar: {
                 show: false
@@ -346,56 +333,28 @@ const updateActiveUsersChart = () => {
               animations: {
                 enabled: true,
                 easing: 'easeinout',
-                speed: 800,
-                animateGradually: {
-                  enabled: true,
-                  delay: 150
+                speed: 800
+              }
+            },
+            plotOptions: {
+              candlestick: {
+                colors: {
+                  upward: '#F08A24',
+                  downward: '#FF4560'
                 },
-                dynamicAnimation: {
-                  enabled: true,
-                  speed: 350
+                wick: {
+                  useFillColor: true
                 }
               }
             },
-            colors: ['#F08A24'],
-            stroke: {
-              curve: 'smooth',
-              width: 3
-            },
-            fill: {
-              type: 'gradient',
-              gradient: {
-                shadeIntensity: 1,
-                opacityFrom: 0.7,
-                opacityTo: 0.2,
-                stops: [0, 90, 100]
-              }
-            },
-            dataLabels: {
-              enabled: false
-            },
-            markers: {
-              size: 4,
-              colors: ['#F08A24'],
-              strokeColors: '#fff',
-              strokeWidth: 2,
-              hover: {
-                size: 6
-              }
-            },
             xaxis: {
-              categories: timeLabels,
+              type: 'category',
               labels: {
                 style: {
                   colors: '#aaa'
                 },
                 rotate: -45,
-                rotateAlways: false,
-                hideOverlappingLabels: true,
-                maxHeight: 50
-              },
-              tooltip: {
-                enabled: false
+                rotateAlways: false
               }
             },
             yaxis: {
@@ -412,153 +371,108 @@ const updateActiveUsersChart = () => {
               tickAmount: 5
             },
             grid: {
-              borderColor: 'rgba(255, 255, 255, 0.1)',
-              padding: {
-                top: 0,
-                right: 10,
-                bottom: 0,
-                left: 10
-              },
-              xaxis: {
-                lines: {
-                  show: false
-                }
-              }
+              borderColor: 'rgba(255, 255, 255, 0.1)'
             },
             tooltip: {
               theme: 'dark',
-              x: {
-                show: true
-              },
-              y: {
-                formatter: function(val) {
-                  return val.toFixed(0) + ' usuarios';
-                }
-              },
-              marker: {
-                show: true
+              custom: function({ seriesIndex, dataPointIndex, w }) {
+                const data = w.globals.initialSeries[seriesIndex].data[dataPointIndex];
+                return `
+                  <div class="apexcharts-tooltip-candlestick" style="padding: 8px; background: rgba(0,0,0,0.8); color: #fff; border: 1px solid #F08A24;">
+                    <div>Hora: ${data.x}</div>
+                    <div>Apertura: ${data.y[0]}</div>
+                    <div>Máximo: ${data.y[1]}</div>
+                    <div>Mínimo: ${data.y[2]}</div>
+                    <div>Cierre: ${data.y[3]}</div>
+                  </div>
+                `;
               }
-            },
-            responsive: [{
-              breakpoint: 576,
-              options: {
-                chart: {
-                  height: '200px'
-                },
-                markers: {
-                  size: 3
-                }
-              }
-            }]
+            }
           };
           
           apexChartInstance = new ApexCharts(activeUsersChart.value, options);
           apexChartInstance.render();
           
-          // Actualizar las etiquetas de tiempo iniciales
-          initTimeLabels();
-          
-          // Actualizar inmediatamente para mostrar datos interesantes desde el inicio
-          updateActiveUsersChart();
+          // Actualizar el valor actual para mostrar
+          activeUsers.value = candleData[candleData.length - 1].y[3];
         }
         
-        // 3. Inicializar ECharts para el gráfico de tasa de conversión
+        // 3. Inicializar ECharts para el gráfico de tasa de conversión (GAUGE CHART)
         if (conversionChart.value) {
           echartsInstance = echarts.init(conversionChart.value);
           
           const option = {
-            tooltip: {
-              trigger: 'axis',
-              backgroundColor: 'rgba(0, 0, 0, 0.7)',
-              borderColor: '#F08A24',
-              textStyle: {
-                color: '#fff'
-              }
-            },
-            grid: {
-              top: 10,
-              right: 10,
-              bottom: 20,
-              left: 40,
-              containLabel: true
-            },
-            xAxis: {
-              type: 'category',
-              data: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct'],
-              axisLine: {
-                lineStyle: {
-                  color: 'rgba(255, 255, 255, 0.2)'
-                }
-              },
-              axisLabel: {
-                color: '#aaa',
-                fontSize: 10
-              }
-            },
-            yAxis: {
-              type: 'value',
-              min: 0,
-              max: 10,
-              axisLine: {
-                lineStyle: {
-                  color: 'rgba(255, 255, 255, 0.2)'
-                }
-              },
-              splitLine: {
-                lineStyle: {
-                  color: 'rgba(255, 255, 255, 0.1)'
-                }
-              },
-              axisLabel: {
-                color: '#aaa',
-                fontSize: 10,
-                formatter: '{value}%'
-              }
-            },
             series: [
               {
-                name: 'Tasa de conversión',
-                type: 'line',
-                smooth: true,
-                symbol: 'circle',
-                symbolSize: 8,
-                data: [5.2, 5.5, 5.8, 6.2, 6.5, 6.8, 7.2, 7.5, 7.9, 8.3],
-                lineStyle: {
-                  color: '#F08A24',
-                  width: 3
+                type: 'gauge',
+                startAngle: 180,
+                endAngle: 0,
+                center: ['50%', '75%'],
+                radius: '90%',
+                min: 0,
+                max: 15,
+                splitNumber: 5,
+                axisLine: {
+                  lineStyle: {
+                    width: 6,
+                    color: [
+                      [0.3, '#FF4560'],
+                      [0.7, '#FFAB00'],
+                      [1, '#F08A24']
+                    ]
+                  }
                 },
-                itemStyle: {
+                pointer: {
+                  icon: 'path://M12.8,0.7l12,40.1H0.7L12.8,0.7z',
+                  length: '12%',
+                  width: 6,
+                  offsetCenter: [0, '-60%'],
+                  itemStyle: {
+                    color: '#F08A24'
+                  }
+                },
+                axisTick: {
+                  length: 12,
+                  lineStyle: {
+                    color: 'auto',
+                    width: 1
+                  }
+                },
+                splitLine: {
+                  length: 20,
+                  lineStyle: {
+                    color: 'auto',
+                    width: 2
+                  }
+                },
+                axisLabel: {
+                  color: '#aaa',
+                  fontSize: 10,
+                  distance: -60,
+                  formatter: function(value) {
+                    return value + '%';
+                  }
+                },
+                title: {
+                  offsetCenter: [0, '-20%'],
+                  fontSize: 12,
+                  color: '#aaa'
+                },
+                detail: {
+                  fontSize: 30,
+                  offsetCenter: [0, '0%'],
+                  valueAnimation: true,
+                  formatter: function(value) {
+                    return value + '%';
+                  },
                   color: '#F08A24'
                 },
-                areaStyle: {
-                  color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    {
-                      offset: 0,
-                      color: 'rgba(240, 138, 36, 0.5)'
-                    },
-                    {
-                      offset: 1,
-                      color: 'rgba(240, 138, 36, 0.1)'
-                    }
-                  ])
-                },
-                markLine: {
-                  silent: true,
-                  lineStyle: {
-                    color: '#F08A24',
-                    type: 'dashed'
-                  },
-                  data: [
-                    {
-                      yAxis: 7.0,
-                      label: {
-                        formatter: 'Objetivo: 7%',
-                        position: 'start',
-                        color: '#F08A24'
-                      }
-                    }
-                  ]
-                }
+                data: [
+                  {
+                    value: 8.3,
+                    name: 'Conversión'
+                  }
+                ]
               }
             ],
             animation: true
@@ -567,85 +481,98 @@ const updateActiveUsersChart = () => {
           echartsInstance.setOption(option);
         }
         
-        // 4. Inicializar ApexCharts para el gráfico de feedback como PIE CHART
+        // 4. Inicializar ApexCharts para el gráfico de feedback (HEATMAP)
         if (feedbackChart.value) {
+          // Generar datos para el heatmap
+          const generateHeatmapData = () => {
+            const categories = ['Escaneo', 'Interfaz', 'Búsqueda', 'Precios', 'Mazos'];
+            const series = [];
+            
+            for (let i = 0; i < 5; i++) {
+              const data = [];
+              for (let j = 0; j < 5; j++) {
+                // Más feedback positivo que negativo
+                const value = Math.floor(Math.random() * 30) + (5 - j) * 10;
+                data.push(value);
+              }
+              series.push({
+                name: categories[i],
+                data: data
+              });
+            }
+            
+            return series;
+          };
+          
           const options = {
-            series: [90, 10], // Porcentajes de feedback positivo y negativo
+            series: generateHeatmapData(),
             chart: {
-              type: 'donut',
               height: '100%',
+              type: 'heatmap',
               toolbar: {
                 show: false
               },
               background: 'transparent'
             },
-            labels: ['Positivo', 'Negativo'],
-            colors: ['#F08A24', '#FF4560'],
-            plotOptions: {
-              pie: {
-                donut: {
-                  size: '55%',
-                  labels: {
-                    show: true,
-                    name: {
-                      show: true,
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      color: '#fff',
-                      offsetY: -10
-                    },
-                    value: {
-                      show: true,
-                      fontSize: '16px',
-                      fontWeight: 400,
-                      color: '#fff',
-                      offsetY: 5,
-                      formatter: function (val) {
-                        return val + '%';
-                      }
-                    },
-                    total: {
-                      show: true,
-                      label: 'Total',
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      color: '#fff',
-                      formatter: function () {
-                        return '427';
-                      }
-                    }
-                  }
-                }
-              }
-            },
             dataLabels: {
               enabled: false
             },
-            legend: {
-              position: 'bottom',
-              horizontalAlign: 'center',
-              fontSize: '12px',
+            colors: ['#F08A24'],
+            xaxis: {
+              categories: ['Excelente', 'Bueno', 'Normal', 'Regular', 'Malo'],
               labels: {
-                colors: '#aaa'
-              },
-              markers: {
-                width: 12,
-                height: 12,
-                radius: 12
-              },
-              itemMargin: {
-                horizontal: 10,
-                vertical: 0
+                style: {
+                  colors: '#aaa',
+                  fontSize: '10px'
+                },
+                rotate: 0
               }
             },
-            stroke: {
-              width: 0
+            yaxis: {
+              labels: {
+                style: {
+                  colors: '#aaa',
+                  fontSize: '10px'
+                }
+              }
+            },
+            plotOptions: {
+              heatmap: {
+                colorScale: {
+                  ranges: [
+                    {
+                      from: 0,
+                      to: 20,
+                      color: 'rgba(240, 138, 36, 0.2)',
+                      name: 'bajo'
+                    },
+                    {
+                      from: 21,
+                      to: 40,
+                      color: 'rgba(240, 138, 36, 0.4)',
+                      name: 'medio'
+                    },
+                    {
+                      from: 41,
+                      to: 60,
+                      color: 'rgba(240, 138, 36, 0.6)',
+                      name: 'alto'
+                    },
+                    {
+                      from: 61,
+                      to: 100,
+                      color: 'rgba(240, 138, 36, 0.8)',
+                      name: 'muy alto'
+                    }
+                  ]
+                }
+              }
             },
             tooltip: {
               theme: 'dark',
               y: {
                 formatter: function(val) {
-                  return val + '%';
+                  return val + ' respuestas';
                 }
               }
             }
@@ -671,10 +598,7 @@ const updateActiveUsersChart = () => {
         window.addEventListener('resize', handleResize);
         
         // Iniciar la actualización en tiempo real para el gráfico de usuarios activos
-        // En un entorno real sería cada 5 minutos, pero para demo usamos 5 segundos
-        // Modificar el intervalo de actualización para hacerlo más frecuente
-        // Reemplazar la línea del setInterval al final del setTimeout
-        updateActiveUsersInterval = setInterval(updateActiveUsersChart, 2000); // Actualizar cada 2 segundos para una demo más dinámica
+        updateActiveUsersInterval = setInterval(updateActiveUsersChart, 2000);
       }, 300);
     });
     

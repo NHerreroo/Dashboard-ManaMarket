@@ -17,7 +17,7 @@
           <ion-row>
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
-                <!-- 1. Tiempo medio de respuesta -->
+                <!-- 1. Tiempo medio de respuesta (ECHARTS) -->
                 <response-time-chart 
                   title="Tiempo medio de respuesta"
                   :data="responseTimeData" 
@@ -29,7 +29,7 @@
             </ion-col>
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
-                <!-- 2. Disponibilidad del sistema -->
+                <!-- 2. Disponibilidad del sistema (CHART.JS BUBBLE CHART) -->
                 <div class="chart-container">
                   <div class="chart-header">
                     <h3>Disponibilidad del sistema</h3>
@@ -47,7 +47,7 @@
             </ion-col>
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
-                <!-- 3. Errores de escaneo -->
+                <!-- 3. Errores de escaneo (APEXCHARTS TREEMAP) -->
                 <div class="chart-container">
                   <h3>Porcentaje de errores de escaneo</h3>
                   <div class="kpi-value">{{ scanErrorRate }}<span class="unit">%</span></div>
@@ -63,19 +63,17 @@
           <ion-row>
             <ion-col size="12" size-md="8">
               <div class="dashboard-card">
-                <!-- 4. Tiempo de carga de noticias (usando ResponseTimeChart) -->
-                <response-time-chart 
-                  title="Tiempo de carga de noticias"
-                  :data="newsLoadingTimeData" 
-                  :current-value="loadingTime"
-                  :maxValue="3"
-                  unit="s"
-                />
+                <!-- 4. Tiempo de carga de noticias (CUSTOM CHART) -->
+                <div class="chart-container">
+                  <h3>Tiempo de carga de noticias</h3>
+                  <div class="kpi-value">{{ loadingTime }}<span class="unit">s</span></div>
+                  <div ref="newsLoadingChart" class="chart-wrapper"></div>
+                </div>
               </div>
             </ion-col>
             <ion-col size="12" size-md="4">
               <div class="dashboard-card">
-                <!-- 5. Copias de seguridad completadas (CIRCULAR) -->
+                <!-- 5. Copias de seguridad completadas (APEXCHARTS POLAR AREA) -->
                 <div class="chart-container">
                   <h3>Copias de seguridad completadas</h3>
                   <div class="kpi-value">{{ backupRate }}<span class="unit">%</span></div>
@@ -111,6 +109,7 @@ export default defineComponent({
     // Referencias para los gráficos
     const availabilityChart = ref(null);
     const scanErrorChart = ref(null);
+    const newsLoadingChart = ref(null);
     const backupChart = ref(null);
     
     // Datos para los KPIs
@@ -127,13 +126,14 @@ export default defineComponent({
     
     // Variables para los gráficos
     let chartJsInstance = null;
-    let apexChartInstance = null;
-    let donutChartInstance = null;
+    let scanErrorChartInstance = null;
+    let newsLoadingChartInstance = null;
+    let backupChartInstance = null;
     let updateInterval = null;
     
     // Datos para el gráfico de disponibilidad en tiempo real
-    const availabilityData = [99.7, 99.8, 99.9, 99.7, 99.6, 99.8, 99.9, 99.8, 99.7, 99.8, 99.9, 99.8];
-    const timeLabels = ['12:00', '12:05', '12:10', '12:15', '12:20', '12:25', '12:30', '12:35', '12:40', '12:45', '12:50', '12:55'];
+    const availabilityData = [];
+    const timeLabels = [];
     
     // Función para actualizar el gráfico de disponibilidad en tiempo real
     const updateAvailabilityChart = () => {
@@ -142,66 +142,274 @@ export default defineComponent({
         const newValue = (99.5 + Math.random() * 0.5).toFixed(1);
         systemAvailability.value = parseFloat(newValue);
         
-        // Actualizar datos y etiquetas
-        availabilityData.push(newValue);
-        availabilityData.shift();
-        
+        // Actualizar datos para el gráfico de burbujas
         const now = new Date();
-        const timeString = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-        timeLabels.push(timeString);
-        timeLabels.shift();
+        const hour = now.getHours();
+        const minute = now.getMinutes();
+        
+        // Añadir nuevos puntos (máximo 20)
+        availabilityData.push({
+          x: hour + minute / 60, // Posición X basada en la hora (0-24)
+          y: parseFloat(newValue), // Valor de disponibilidad
+          r: Math.random() * 10 + 5 // Radio aleatorio entre 5 y 15
+        });
+        
+        // Mantener solo los últimos 20 puntos
+        if (availabilityData.length > 20) {
+          availabilityData.shift();
+        }
         
         // Actualizar el gráfico
-        chartJsInstance.data.labels = timeLabels;
         chartJsInstance.data.datasets[0].data = availabilityData;
         chartJsInstance.update();
       }
     };
     
+    // Función para renderizar el gráfico personalizado de tiempo de carga
+    const renderNewsLoadingChart = () => {
+      if (!newsLoadingChart.value) return;
+      
+      // Limpiar el contenedor
+      newsLoadingChart.value.innerHTML = '';
+      
+      // Obtener dimensiones del contenedor
+      const containerWidth = newsLoadingChart.value.clientWidth;
+      const containerHeight = newsLoadingChart.value.clientHeight;
+      
+      // Si no hay dimensiones, no renderizar
+      if (containerWidth === 0 || containerHeight === 0) return;
+      
+      // Crear SVG
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', containerWidth);
+      svg.setAttribute('height', containerHeight);
+      svg.style.overflow = 'visible';
+      
+      // Definir márgenes
+      const margin = { top: 20, right: 20, bottom: 30, left: 40 };
+      const width = containerWidth - margin.left - margin.right;
+      const height = containerHeight - margin.top - margin.bottom;
+      
+      // Crear grupo principal con transformación
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('transform', `translate(${margin.left},${margin.top})`);
+      
+      // Calcular escalas
+      const xScale = width / (newsLoadingTimeData.value.length - 1);
+      const yScale = height / 3; // El máximo valor es 3 segundos
+      
+      // Crear líneas de referencia horizontales
+      for (let i = 0; i <= 3; i++) {
+        const y = height - i * yScale;
+        
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', 0);
+        line.setAttribute('y1', y);
+        line.setAttribute('x2', width);
+        line.setAttribute('y2', y);
+        line.setAttribute('stroke', 'rgba(255, 255, 255, 0.1)');
+        line.setAttribute('stroke-width', '1');
+        g.appendChild(line);
+        
+        // Añadir etiqueta
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', -10);
+        text.setAttribute('y', y + 5);
+        text.setAttribute('text-anchor', 'end');
+        text.setAttribute('fill', '#aaa');
+        text.setAttribute('font-size', '10px');
+        text.textContent = i + 's';
+        g.appendChild(text);
+      }
+      
+      // Crear puntos de datos
+      const points = [];
+      newsLoadingTimeData.value.forEach((value, index) => {
+        const x = index * xScale;
+        const y = height - value * yScale;
+        points.push(`${x},${y}`);
+        
+        // Crear círculo para cada punto
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', x);
+        circle.setAttribute('cy', y);
+        circle.setAttribute('r', 4);
+        circle.setAttribute('fill', '#F08A24');
+        
+        // Añadir tooltip al pasar el mouse
+        circle.addEventListener('mouseover', (e) => {
+          const tooltip = document.createElement('div');
+          tooltip.className = 'chart-tooltip';
+          tooltip.textContent = `${value}s`;
+          tooltip.style.position = 'absolute';
+          tooltip.style.left = `${e.pageX}px`;
+          tooltip.style.top = `${e.pageY - 30}px`;
+          tooltip.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+          tooltip.style.color = '#fff';
+          tooltip.style.padding = '5px 10px';
+          tooltip.style.borderRadius = '4px';
+          tooltip.style.fontSize = '12px';
+          tooltip.style.zIndex = '1000';
+          tooltip.style.pointerEvents = 'none';
+          document.body.appendChild(tooltip);
+          
+          circle.addEventListener('mousemove', (e) => {
+            tooltip.style.left = `${e.pageX + 10}px`;
+            tooltip.style.top = `${e.pageY - 30}px`;
+          });
+          
+          circle.addEventListener('mouseout', () => {
+            document.body.removeChild(tooltip);
+          });
+        });
+        
+        g.appendChild(circle);
+      });
+      
+      // Crear línea de tendencia
+      const linePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      linePath.setAttribute('d', `M${points.join(' L')}`);
+      linePath.setAttribute('fill', 'none');
+      linePath.setAttribute('stroke', '#F08A24');
+      linePath.setAttribute('stroke-width', '2');
+      linePath.setAttribute('stroke-linecap', 'round');
+      linePath.setAttribute('stroke-linejoin', 'round');
+      g.appendChild(linePath);
+      
+      // Crear área bajo la línea
+      const areaPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      areaPath.setAttribute('d', `M0,${height} L${points.join(' L')} L${width},${height} Z`);
+      areaPath.setAttribute('fill', 'url(#gradient)');
+      
+      // Crear gradiente
+      const gradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+      gradient.setAttribute('id', 'gradient');
+      gradient.setAttribute('x1', '0%');
+      gradient.setAttribute('y1', '0%');
+      gradient.setAttribute('x2', '0%');
+      gradient.setAttribute('y2', '100%');
+      
+      const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+      stop1.setAttribute('offset', '0%');
+      stop1.setAttribute('stop-color', 'rgba(240, 138, 36, 0.5)');
+      
+      const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+      stop2.setAttribute('offset', '100%');
+      stop2.setAttribute('stop-color', 'rgba(240, 138, 36, 0.1)');
+      
+      gradient.appendChild(stop1);
+      gradient.appendChild(stop2);
+      
+      const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+      defs.appendChild(gradient);
+      svg.appendChild(defs);
+      
+      // Añadir área bajo la línea (después del gradiente)
+      g.appendChild(areaPath);
+      
+      // Añadir etiquetas del eje X
+      newsLoadingTimeData.value.forEach((_, index) => {
+        if (index % 2 === 0) { // Mostrar cada dos puntos
+          const x = index * xScale;
+          const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          text.setAttribute('x', x);
+          text.setAttribute('y', height + 20);
+          text.setAttribute('text-anchor', 'middle');
+          text.setAttribute('fill', '#aaa');
+          text.setAttribute('font-size', '10px');
+          text.textContent = `Día ${index + 1}`;
+          g.appendChild(text);
+        }
+      });
+      
+      // Añadir grupo al SVG
+      svg.appendChild(g);
+      
+      // Añadir SVG al contenedor
+      newsLoadingChart.value.appendChild(svg);
+    };
+    
     onMounted(() => {
       // Asegurarse de que los contenedores de gráficos tengan el tamaño correcto
       setTimeout(() => {
-        // 1. Inicializar Chart.js para el gráfico de disponibilidad en tiempo real
+        // 1. Inicializar Chart.js para el gráfico de disponibilidad (BUBBLE CHART)
         if (availabilityChart.value) {
           const ctx = availabilityChart.value.getContext('2d');
+          
+          // Generar datos iniciales para el gráfico de burbujas
+          for (let i = 0; i < 20; i++) {
+            const hour = Math.floor(Math.random() * 24);
+            const minute = Math.floor(Math.random() * 60);
+            const value = (99.5 + Math.random() * 0.5).toFixed(1);
+            
+            availabilityData.push({
+              x: hour + minute / 60,
+              y: parseFloat(value),
+              r: Math.random() * 10 + 5
+            });
+          }
+          
           chartJsInstance = new Chart(ctx, {
-            type: 'line',
+            type: 'bubble',
             data: {
-              labels: timeLabels,
               datasets: [{
-                label: 'Disponibilidad (%)',
+                label: 'Disponibilidad',
                 data: availabilityData,
+                backgroundColor: function(context) {
+                  const value = context.raw.y;
+                  const alpha = (value - 99.5) * 2; // 0.0 a 1.0 para valores entre 99.5 y 100
+                  return `rgba(240, 138, 36, ${alpha})`;
+                },
                 borderColor: '#F08A24',
-                backgroundColor: 'rgba(240, 138, 36, 0.1)',
-                tension: 0.4,
-                fill: true
+                borderWidth: 1
               }]
             },
             options: {
               responsive: true,
               maintainAspectRatio: false,
-              plugins: {
-                legend: {
-                  display: false
-                }
-              },
               scales: {
                 y: {
-                  min: 99,
+                  min: 99.5,
                   max: 100,
                   grid: {
                     color: 'rgba(255, 255, 255, 0.1)'
                   },
                   ticks: {
-                    color: '#aaa'
+                    color: '#aaa',
+                    callback: function(value) {
+                      return value + '%';
+                    }
                   }
                 },
                 x: {
+                  min: 0,
+                  max: 24,
                   grid: {
                     color: 'rgba(255, 255, 255, 0.1)'
                   },
                   ticks: {
-                    color: '#aaa'
+                    color: '#aaa',
+                    callback: function(value) {
+                      const hour = Math.floor(value);
+                      const minute = Math.round((value - hour) * 60);
+                      return `${hour}:${minute.toString().padStart(2, '0')}`;
+                    }
+                  }
+                }
+              },
+              plugins: {
+                legend: {
+                  display: false
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      const x = context.raw.x;
+                      const hour = Math.floor(x);
+                      const minute = Math.round((x - hour) * 60);
+                      const timeStr = `${hour}:${minute.toString().padStart(2, '0')}`;
+                      return `Hora: ${timeStr}, Disponibilidad: ${context.raw.y}%`;
+                    }
                   }
                 }
               }
@@ -209,15 +417,40 @@ export default defineComponent({
           });
         }
         
-        // 2. Inicializar ApexCharts para el gráfico de errores de escaneo
+        // 2. Inicializar ApexCharts para el gráfico de errores de escaneo (TREEMAP)
         if (scanErrorChart.value) {
-          const options = {
-            series: [{
+          const data = [
+            {
               name: 'Errores de escaneo',
-              data: [3.8, 3.2, 2.9, 2.7, 2.5, 2.3]
-            }],
+              data: [
+                {
+                  x: 'Iluminación',
+                  y: 1.2
+                },
+                {
+                  x: 'Ángulo',
+                  y: 0.5
+                },
+                {
+                  x: 'Distancia',
+                  y: 0.3
+                },
+                {
+                  x: 'Reflejo',
+                  y: 0.2
+                },
+                {
+                  x: 'Otros',
+                  y: 0.1
+                }
+              ]
+            }
+          ];
+          
+          const options = {
+            series: data,
             chart: {
-              type: 'bar',
+              type: 'treemap',
               height: '100%',
               toolbar: {
                 show: false
@@ -227,117 +460,111 @@ export default defineComponent({
             },
             colors: ['#F08A24'],
             plotOptions: {
-              bar: {
-                borderRadius: 4,
-                columnWidth: '50%',
+              treemap: {
+                distributed: true,
+                enableShades: true,
+                shadeIntensity: 0.5
               }
             },
             dataLabels: {
-              enabled: false
-            },
-            xaxis: {
-              categories: ['May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct'],
-              labels: {
-                style: {
-                  colors: '#aaa'
-                }
+              enabled: true,
+              style: {
+                fontSize: '12px',
+                fontWeight: 'bold',
+                colors: ['#fff']
+              },
+              formatter: function(text, op) {
+                return [text, op.value + '%'];
               }
             },
-            yaxis: {
-              min: 0,
-              max: 5,
-              labels: {
-                style: {
-                  colors: '#aaa'
+            legend: {
+              show: false
+            },
+            tooltip: {
+              theme: 'dark',
+              y: {
+                formatter: function(val) {
+                  return val + '%';
                 }
               }
-            },
-            grid: {
-              borderColor: 'rgba(255, 255, 255, 0.1)'
             }
           };
           
-          apexChartInstance = new ApexCharts(scanErrorChart.value, options);
-          apexChartInstance.render();
+          scanErrorChartInstance = new ApexCharts(scanErrorChart.value, options);
+          scanErrorChartInstance.render();
         }
         
-        // 4. Inicializar ApexCharts para el gráfico circular de copias de seguridad
+        // 3. Renderizar gráfico personalizado para tiempo de carga de noticias
+        renderNewsLoadingChart();
+        
+        // 4. Inicializar ApexCharts para el gráfico de copias de seguridad (POLAR AREA)
         if (backupChart.value) {
           const options = {
-            series: [96], // Porcentaje de copias de seguridad completadas
+            series: [25, 15, 44, 12],
             chart: {
+              type: 'polarArea',
               height: '100%',
-              type: 'radialBar',
               toolbar: {
                 show: false
               },
               background: 'transparent'
             },
+            labels: ['Completas', 'Parciales', 'Incrementales', 'Fallidas'],
+            fill: {
+              opacity: 0.8
+            },
+            stroke: {
+              width: 1,
+              colors: ['#1E1E1E']
+            },
+            yaxis: {
+              show: false
+            },
+            legend: {
+              position: 'bottom',
+              fontSize: '10px',
+              labels: {
+                colors: '#aaa'
+              },
+              markers: {
+                width: 8,
+                height: 8
+              }
+            },
             plotOptions: {
-              radialBar: {
-                startAngle: -135,
-                endAngle: 135,
-                hollow: {
-                  margin: 0,
-                  size: '70%',
-                  background: 'transparent',
+              polarArea: {
+                rings: {
+                  strokeWidth: 0
                 },
-                track: {
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  strokeWidth: '97%',
-                  margin: 5,
-                  dropShadow: {
-                    enabled: false
-                  }
-                },
-                dataLabels: {
-                  name: {
-                    show: false
-                  },
-                  value: {
-                    offsetY: 10,
-                    color: '#F08A24',
-                    fontSize: '26px',
-                    fontWeight: 600,
-                    formatter: function (val) {
-                      return val + '%';
-                    }
-                  }
+                spokes: {
+                  strokeWidth: 0
                 }
               }
             },
-            fill: {
-              type: 'gradient',
-              gradient: {
-                shade: 'dark',
-                type: 'horizontal',
-                shadeIntensity: 0.5,
-                gradientToColors: ['#F08A24'],
-                inverseColors: true,
-                opacityFrom: 1,
-                opacityTo: 1,
-                stops: [0, 100]
+            colors: ['#F08A24', '#FFAB00', '#FF4560', '#775DD0'],
+            tooltip: {
+              theme: 'dark',
+              y: {
+                formatter: function(val) {
+                  return val + '%';
+                }
               }
-            },
-            stroke: {
-              dashArray: 4
-            },
-            colors: ['#F08A24'],
-            labels: ['Completadas']
+            }
           };
           
-          donutChartInstance = new ApexCharts(backupChart.value, options);
-          donutChartInstance.render();
+          backupChartInstance = new ApexCharts(backupChart.value, options);
+          backupChartInstance.render();
         }
         
         // Manejar el redimensionamiento para todos los gráficos
         const handleResize = () => {
-          if (apexChartInstance) {
-            apexChartInstance.render();
+          if (scanErrorChartInstance) {
+            scanErrorChartInstance.render();
           }
-          if (donutChartInstance) {
-            donutChartInstance.render();
+          if (backupChartInstance) {
+            backupChartInstance.render();
           }
+          renderNewsLoadingChart();
         };
         
         window.addEventListener('resize', handleResize);
@@ -354,12 +581,12 @@ export default defineComponent({
       }
       
       // Destruir las instancias de los gráficos
-      if (apexChartInstance) {
-        apexChartInstance.destroy();
+      if (scanErrorChartInstance) {
+        scanErrorChartInstance.destroy();
       }
       
-      if (donutChartInstance) {
-        donutChartInstance.destroy();
+      if (backupChartInstance) {
+        backupChartInstance.destroy();
       }
       
       // Eliminar el event listener
@@ -375,6 +602,7 @@ export default defineComponent({
       newsLoadingTimeData,
       availabilityChart,
       scanErrorChart,
+      newsLoadingChart,
       backupChart
     };
   }
