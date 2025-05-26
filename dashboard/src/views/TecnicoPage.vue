@@ -17,7 +17,7 @@
           <ion-row>
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
-                <!-- 1. Tiempo medio de respuesta (ECHARTS) -->
+                <!-- 1. Tiempo medio de respuesta -->
                 <response-time-chart 
                   title="Tiempo medio de respuesta"
                   :data="responseTimeData" 
@@ -29,7 +29,7 @@
             </ion-col>
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
-                <!-- 2. Disponibilidad del sistema (CHART.JS BUBBLE CHART) -->
+                <!-- 2. Disponibilidad del sistema -->
                 <div class="chart-container">
                   <div class="chart-header">
                     <h3>Disponibilidad del sistema</h3>
@@ -47,12 +47,26 @@
             </ion-col>
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
-                <!-- 3. Errores de escaneo (APEXCHARTS TREEMAP) -->
+                <!-- 3. Mapa de calor de escaneos de cartas MTG -->
                 <div class="chart-container">
-                  <h3>Porcentaje de errores de escaneo</h3>
+                  <h3>🃏 Mapa de escaneos de cartas</h3>
                   <div class="kpi-value">{{ scanErrorRate }}<span class="unit">%</span></div>
                   <div class="chart-wrapper">
-                    <div ref="scanErrorChart"></div>
+                    <div ref="scanErrorChart" class="heatmap-chart"></div>
+                  </div>
+                  <div class="error-legend">
+                    <div class="legend-item">
+                      <span class="legend-color high"></span>
+                      <span>Alto (&gt;5%)</span>
+                    </div>
+                    <div class="legend-item">
+                      <span class="legend-color medium"></span>
+                      <span>Medio (2-5%)</span>
+                    </div>
+                    <div class="legend-item">
+                      <span class="legend-color low"></span>
+                      <span>Bajo (&lt;2%)</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -63,17 +77,29 @@
           <ion-row>
             <ion-col size="12" size-md="8">
               <div class="dashboard-card">
-                <!-- 4. Tiempo de carga de noticias (CUSTOM CHART) -->
+                <!-- 4. Tiempo de carga de noticias (BARRAS) -->
                 <div class="chart-container">
-                  <h3>Tiempo de carga de noticias</h3>
+                  <h3>Tiempo de carga de noticias (últimos 10 min)</h3>
                   <div class="kpi-value">{{ loadingTime }}<span class="unit">s</span></div>
-                  <div ref="newsLoadingChart" class="chart-wrapper"></div>
+                  <div class="chart-wrapper">
+                    <div ref="newsLoadingChart"></div>
+                  </div>
+                  <div class="loading-info">
+                    <div class="info-item">
+                      <span class="info-label">Objetivo:</span>
+                      <span class="info-value">&lt; 1.5s</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">Promedio:</span>
+                      <span class="info-value">{{ loadingTime }}s</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </ion-col>
             <ion-col size="12" size-md="4">
               <div class="dashboard-card">
-                <!-- 5. Copias de seguridad completadas (APEXCHARTS POLAR AREA) -->
+                <!-- 5. Copias de seguridad completadas (CIRCULAR) -->
                 <div class="chart-container">
                   <h3>Copias de seguridad completadas</h3>
                   <div class="kpi-value">{{ backupRate }}<span class="unit">%</span></div>
@@ -92,7 +118,7 @@
 
 <script>
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonGrid, IonRow, IonCol, IonButtons, IonMenuButton } from '@ionic/vue';
-import { defineComponent, ref, onMounted, onUnmounted } from 'vue';
+import { defineComponent, ref, onMounted, onUnmounted, nextTick } from 'vue';
 import Chart from 'chart.js/auto';
 import * as echarts from 'echarts';
 import ApexCharts from 'apexcharts';
@@ -114,26 +140,26 @@ export default defineComponent({
     
     // Datos para los KPIs
     const systemAvailability = ref(99.8);
-    const scanErrorRate = ref(2.3);
+    const scanErrorRate = ref(3.7);
     const loadingTime = ref(1.2);
     const backupRate = ref(96);
     
     // Datos para los gráficos
     const responseTimeData = ref([230, 242, 255, 260, 248, 245, 238, 242, 250, 245]);
     const newsLoadingTimeData = ref([
-      1.8, 1.7, 1.9, 1.6, 1.5, 1.4, 1.3, 1.4, 1.5, 1.3
+      1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.3, 1.2, 1.2, 1.2
     ]);
     
     // Variables para los gráficos
     let chartJsInstance = null;
-    let scanErrorChartInstance = null;
-    let newsLoadingChartInstance = null;
-    let backupChartInstance = null;
+    let heatmapChartInstance = null;
+    let newsBarChartInstance = null;
+    let donutChartInstance = null;
     let updateInterval = null;
     
     // Datos para el gráfico de disponibilidad en tiempo real
-    const availabilityData = [];
-    const timeLabels = [];
+    const availabilityData = [99.7, 99.8, 99.9, 99.7, 99.6, 99.8, 99.9, 99.8, 99.7, 99.8, 99.9, 99.8];
+    const timeLabels = ['12:00', '12:05', '12:10', '12:15', '12:20', '12:25', '12:30', '12:35', '12:40', '12:45', '12:50', '12:55'];
     
     // Función para actualizar el gráfico de disponibilidad en tiempo real
     const updateAvailabilityChart = () => {
@@ -142,274 +168,237 @@ export default defineComponent({
         const newValue = (99.5 + Math.random() * 0.5).toFixed(1);
         systemAvailability.value = parseFloat(newValue);
         
-        // Actualizar datos para el gráfico de burbujas
+        // Actualizar datos y etiquetas
+        availabilityData.push(newValue);
+        availabilityData.shift();
+        
         const now = new Date();
-        const hour = now.getHours();
-        const minute = now.getMinutes();
-        
-        // Añadir nuevos puntos (máximo 20)
-        availabilityData.push({
-          x: hour + minute / 60, // Posición X basada en la hora (0-24)
-          y: parseFloat(newValue), // Valor de disponibilidad
-          r: Math.random() * 10 + 5 // Radio aleatorio entre 5 y 15
-        });
-        
-        // Mantener solo los últimos 20 puntos
-        if (availabilityData.length > 20) {
-          availabilityData.shift();
-        }
+        const timeString = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+        timeLabels.push(timeString);
+        timeLabels.shift();
         
         // Actualizar el gráfico
+        chartJsInstance.data.labels = timeLabels;
         chartJsInstance.data.datasets[0].data = availabilityData;
         chartJsInstance.update();
       }
     };
-    
-    // Función para renderizar el gráfico personalizado de tiempo de carga
-    const renderNewsLoadingChart = () => {
-      if (!newsLoadingChart.value) return;
-      
-      // Limpiar el contenedor
-      newsLoadingChart.value.innerHTML = '';
-      
-      // Obtener dimensiones del contenedor
-      const containerWidth = newsLoadingChart.value.clientWidth;
-      const containerHeight = newsLoadingChart.value.clientHeight;
-      
-      // Si no hay dimensiones, no renderizar
-      if (containerWidth === 0 || containerHeight === 0) return;
-      
-      // Crear SVG
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('width', containerWidth);
-      svg.setAttribute('height', containerHeight);
-      svg.style.overflow = 'visible';
-      
-      // Definir márgenes
-      const margin = { top: 20, right: 20, bottom: 30, left: 40 };
-      const width = containerWidth - margin.left - margin.right;
-      const height = containerHeight - margin.top - margin.bottom;
-      
-      // Crear grupo principal con transformación
-      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      g.setAttribute('transform', `translate(${margin.left},${margin.top})`);
-      
-      // Calcular escalas
-      const xScale = width / (newsLoadingTimeData.value.length - 1);
-      const yScale = height / 3; // El máximo valor es 3 segundos
-      
-      // Crear líneas de referencia horizontales
-      for (let i = 0; i <= 3; i++) {
-        const y = height - i * yScale;
+
+    // Función para inicializar el mapa de calor de escaneos MTG
+    const initHeatmapChart = () => {
+      if (!scanErrorChart.value) return;
+
+      try {
+        heatmapChartInstance = echarts.init(scanErrorChart.value, 'dark');
         
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('x1', 0);
-        line.setAttribute('y1', y);
-        line.setAttribute('x2', width);
-        line.setAttribute('y2', y);
-        line.setAttribute('stroke', 'rgba(255, 255, 255, 0.1)');
-        line.setAttribute('stroke-width', '1');
-        g.appendChild(line);
+        // Datos del mapa de calor para escaneos de cartas MTG: [x, y, valor]
+        const mtgScanData = [
+          // Fila 0: Dañada
+          [0, 0, 6.2], [1, 0, 5.8], [2, 0, 7.1], [3, 0, 4.9], [4, 0, 5.5], [5, 0, 6.8],
+          // Fila 1: Otro (problemas diversos)
+          [0, 1, 2.3], [1, 1, 3.1], [2, 1, 2.8], [3, 1, 3.5], [4, 1, 2.9], [5, 1, 3.2],
+          // Fila 2: Ángulo (perspectiva incorrecta)
+          [0, 2, 4.1], [1, 2, 3.7], [2, 2, 4.8], [3, 2, 3.9], [4, 2, 4.3], [5, 2, 4.0],
+          // Fila 3: Iluminación (problemas de luz)
+          [0, 3, 1.8], [1, 3, 2.2], [2, 3, 1.5], [3, 3, 2.6], [4, 3, 1.9], [5, 3, 2.1]
+        ];
         
-        // Añadir etiqueta
-        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        text.setAttribute('x', -10);
-        text.setAttribute('y', y + 5);
-        text.setAttribute('text-anchor', 'end');
-        text.setAttribute('fill', '#aaa');
-        text.setAttribute('font-size', '10px');
-        text.textContent = i + 's';
-        g.appendChild(text);
+        const option = {
+          backgroundColor: 'transparent',
+          tooltip: {
+            position: 'top',
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            borderColor: '#F08A24',
+            borderWidth: 1,
+            textStyle: {
+              color: '#fff',
+              fontSize: 12
+            },
+            formatter: function(params) {
+              const weeks = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'];
+              const scanTypes = ['🔥 Dañada', '❓ Otro', '📐 Ángulo', '💡 Iluminación'];
+              return `<strong>${scanTypes[params.data[1]]}</strong><br/>
+                      ${weeks[params.data[0]]}: <span style="color: #F08A24">${params.data[2]}%</span> errores`;
+            }
+          },
+          grid: {
+            height: '60%',
+            top: '10%',
+            left: '20%',
+            right: '10%',
+            bottom: '30%'
+          },
+          xAxis: {
+            type: 'category',
+            data: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'],
+            splitArea: {
+              show: true,
+              areaStyle: {
+                color: ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.05)']
+              }
+            },
+            axisLabel: {
+              color: '#aaa',
+              fontSize: 10,
+              fontWeight: 'bold'
+            },
+            axisLine: {
+              show: false
+            },
+            axisTick: {
+              show: false
+            },
+            splitLine: {
+              show: false
+            }
+          },
+          yAxis: {
+            type: 'category',
+            data: ['🔥 Dañada', '❓ Otro', '📐 Ángulo', '💡 Iluminación'],
+            splitArea: {
+              show: true,
+              areaStyle: {
+                color: ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.05)']
+              }
+            },
+            axisLabel: {
+              color: '#aaa',
+              fontSize: 10,
+              fontWeight: 'bold',
+              margin: 10
+            },
+            axisLine: {
+              show: false
+            },
+            axisTick: {
+              show: false
+            },
+            splitLine: {
+              show: false
+            }
+          },
+          visualMap: {
+            min: 0,
+            max: 8,
+            calculable: false,
+            orient: 'horizontal',
+            left: 'center',
+            bottom: '5%',
+            textStyle: {
+              color: '#aaa',
+              fontSize: 9
+            },
+            inRange: {
+              color: [
+                '#0D4F3C', // Verde muy oscuro (valores bajos)
+                '#2E7D32', // Verde oscuro
+                '#4CAF50', // Verde
+                '#8BC34A', // Verde claro
+                '#CDDC39', // Lima
+                '#FFEB3B', // Amarillo
+                '#FFC107', // Ámbar
+                '#FF9800', // Naranja
+                '#FF5722', // Naranja rojizo
+                '#F44336'  // Rojo (valores altos)
+              ]
+            },
+            show: false
+          },
+          series: [{
+            name: 'Errores de escaneo MTG',
+            type: 'heatmap',
+            data: mtgScanData,
+            label: {
+              show: true,
+              color: '#fff',
+              fontSize: 10,
+              fontWeight: 'bold',
+              formatter: function(params) {
+                return params.data[2] + '%';
+              },
+              shadowColor: 'rgba(0, 0, 0, 0.5)',
+              shadowBlur: 2
+            },
+            emphasis: {
+              itemStyle: {
+                shadowBlur: 10,
+                shadowColor: 'rgba(240, 138, 36, 0.8)',
+                borderColor: '#F08A24',
+                borderWidth: 2
+              },
+              label: {
+                fontSize: 11,
+                fontWeight: 'bold'
+              }
+            },
+            itemStyle: {
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              borderWidth: 1,
+              borderRadius: 3
+            }
+          }]
+        };
+        
+        heatmapChartInstance.setOption(option);
+        
+        // Forzar el resize después de un pequeño delay
+        setTimeout(() => {
+          if (heatmapChartInstance) {
+            heatmapChartInstance.resize();
+          }
+        }, 100);
+        
+      } catch (error) {
+        console.error('Error inicializando el mapa de calor:', error);
       }
-      
-      // Crear puntos de datos
-      const points = [];
-      newsLoadingTimeData.value.forEach((value, index) => {
-        const x = index * xScale;
-        const y = height - value * yScale;
-        points.push(`${x},${y}`);
-        
-        // Crear círculo para cada punto
-        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        circle.setAttribute('cx', x);
-        circle.setAttribute('cy', y);
-        circle.setAttribute('r', 4);
-        circle.setAttribute('fill', '#F08A24');
-        
-        // Añadir tooltip al pasar el mouse
-        circle.addEventListener('mouseover', (e) => {
-          const tooltip = document.createElement('div');
-          tooltip.className = 'chart-tooltip';
-          tooltip.textContent = `${value}s`;
-          tooltip.style.position = 'absolute';
-          tooltip.style.left = `${e.pageX}px`;
-          tooltip.style.top = `${e.pageY - 30}px`;
-          tooltip.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-          tooltip.style.color = '#fff';
-          tooltip.style.padding = '5px 10px';
-          tooltip.style.borderRadius = '4px';
-          tooltip.style.fontSize = '12px';
-          tooltip.style.zIndex = '1000';
-          tooltip.style.pointerEvents = 'none';
-          document.body.appendChild(tooltip);
-          
-          circle.addEventListener('mousemove', (e) => {
-            tooltip.style.left = `${e.pageX + 10}px`;
-            tooltip.style.top = `${e.pageY - 30}px`;
-          });
-          
-          circle.addEventListener('mouseout', () => {
-            document.body.removeChild(tooltip);
-          });
-        });
-        
-        g.appendChild(circle);
-      });
-      
-      // Crear línea de tendencia
-      const linePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      linePath.setAttribute('d', `M${points.join(' L')}`);
-      linePath.setAttribute('fill', 'none');
-      linePath.setAttribute('stroke', '#F08A24');
-      linePath.setAttribute('stroke-width', '2');
-      linePath.setAttribute('stroke-linecap', 'round');
-      linePath.setAttribute('stroke-linejoin', 'round');
-      g.appendChild(linePath);
-      
-      // Crear área bajo la línea
-      const areaPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      areaPath.setAttribute('d', `M0,${height} L${points.join(' L')} L${width},${height} Z`);
-      areaPath.setAttribute('fill', 'url(#gradient)');
-      
-      // Crear gradiente
-      const gradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
-      gradient.setAttribute('id', 'gradient');
-      gradient.setAttribute('x1', '0%');
-      gradient.setAttribute('y1', '0%');
-      gradient.setAttribute('x2', '0%');
-      gradient.setAttribute('y2', '100%');
-      
-      const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-      stop1.setAttribute('offset', '0%');
-      stop1.setAttribute('stop-color', 'rgba(240, 138, 36, 0.5)');
-      
-      const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-      stop2.setAttribute('offset', '100%');
-      stop2.setAttribute('stop-color', 'rgba(240, 138, 36, 0.1)');
-      
-      gradient.appendChild(stop1);
-      gradient.appendChild(stop2);
-      
-      const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-      defs.appendChild(gradient);
-      svg.appendChild(defs);
-      
-      // Añadir área bajo la línea (después del gradiente)
-      g.appendChild(areaPath);
-      
-      // Añadir etiquetas del eje X
-      newsLoadingTimeData.value.forEach((_, index) => {
-        if (index % 2 === 0) { // Mostrar cada dos puntos
-          const x = index * xScale;
-          const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-          text.setAttribute('x', x);
-          text.setAttribute('y', height + 20);
-          text.setAttribute('text-anchor', 'middle');
-          text.setAttribute('fill', '#aaa');
-          text.setAttribute('font-size', '10px');
-          text.textContent = `Día ${index + 1}`;
-          g.appendChild(text);
-        }
-      });
-      
-      // Añadir grupo al SVG
-      svg.appendChild(g);
-      
-      // Añadir SVG al contenedor
-      newsLoadingChart.value.appendChild(svg);
     };
     
-    onMounted(() => {
-      // Asegurarse de que los contenedores de gráficos tengan el tamaño correcto
+    onMounted(async () => {
+      await nextTick();
+      
+      // Esperar un poco más para asegurar que el DOM esté completamente renderizado
       setTimeout(() => {
-        // 1. Inicializar Chart.js para el gráfico de disponibilidad (BUBBLE CHART)
+        // 1. Inicializar Chart.js para el gráfico de disponibilidad en tiempo real
         if (availabilityChart.value) {
           const ctx = availabilityChart.value.getContext('2d');
-          
-          // Generar datos iniciales para el gráfico de burbujas
-          for (let i = 0; i < 20; i++) {
-            const hour = Math.floor(Math.random() * 24);
-            const minute = Math.floor(Math.random() * 60);
-            const value = (99.5 + Math.random() * 0.5).toFixed(1);
-            
-            availabilityData.push({
-              x: hour + minute / 60,
-              y: parseFloat(value),
-              r: Math.random() * 10 + 5
-            });
-          }
-          
           chartJsInstance = new Chart(ctx, {
-            type: 'bubble',
+            type: 'line',
             data: {
+              labels: timeLabels,
               datasets: [{
-                label: 'Disponibilidad',
+                label: 'Disponibilidad (%)',
                 data: availabilityData,
-                backgroundColor: function(context) {
-                  const value = context.raw.y;
-                  const alpha = (value - 99.5) * 2; // 0.0 a 1.0 para valores entre 99.5 y 100
-                  return `rgba(240, 138, 36, ${alpha})`;
-                },
                 borderColor: '#F08A24',
-                borderWidth: 1
+                backgroundColor: 'rgba(240, 138, 36, 0.1)',
+                tension: 0.4,
+                fill: true
               }]
             },
             options: {
               responsive: true,
               maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  display: false
+                }
+              },
               scales: {
                 y: {
-                  min: 99.5,
+                  min: 99,
                   max: 100,
                   grid: {
                     color: 'rgba(255, 255, 255, 0.1)'
                   },
                   ticks: {
-                    color: '#aaa',
-                    callback: function(value) {
-                      return value + '%';
-                    }
+                    color: '#aaa'
                   }
                 },
                 x: {
-                  min: 0,
-                  max: 24,
                   grid: {
                     color: 'rgba(255, 255, 255, 0.1)'
                   },
                   ticks: {
-                    color: '#aaa',
-                    callback: function(value) {
-                      const hour = Math.floor(value);
-                      const minute = Math.round((value - hour) * 60);
-                      return `${hour}:${minute.toString().padStart(2, '0')}`;
-                    }
-                  }
-                }
-              },
-              plugins: {
-                legend: {
-                  display: false
-                },
-                tooltip: {
-                  callbacks: {
-                    label: function(context) {
-                      const x = context.raw.x;
-                      const hour = Math.floor(x);
-                      const minute = Math.round((x - hour) * 60);
-                      const timeStr = `${hour}:${minute.toString().padStart(2, '0')}`;
-                      return `Hora: ${timeStr}, Disponibilidad: ${context.raw.y}%`;
-                    }
+                    color: '#aaa'
                   }
                 }
               }
@@ -417,40 +406,18 @@ export default defineComponent({
           });
         }
         
-        // 2. Inicializar ApexCharts para el gráfico de errores de escaneo (TREEMAP)
-        if (scanErrorChart.value) {
-          const data = [
-            {
-              name: 'Errores de escaneo',
-              data: [
-                {
-                  x: 'Iluminación',
-                  y: 1.2
-                },
-                {
-                  x: 'Ángulo',
-                  y: 0.5
-                },
-                {
-                  x: 'Distancia',
-                  y: 0.3
-                },
-                {
-                  x: 'Reflejo',
-                  y: 0.2
-                },
-                {
-                  x: 'Otros',
-                  y: 0.1
-                }
-              ]
-            }
-          ];
-          
+        // 2. Inicializar ECharts para el mapa de calor de escaneos de cartas MTG
+        initHeatmapChart();
+        
+        // 3. Inicializar ApexCharts para el gráfico de barras de tiempo de carga de noticias
+        if (newsLoadingChart.value) {
           const options = {
-            series: data,
+            series: [{
+              name: 'Tiempo de carga',
+              data: newsLoadingTimeData.value
+            }],
             chart: {
-              type: 'treemap',
+              type: 'bar',
               height: '100%',
               toolbar: {
                 show: false
@@ -460,118 +427,181 @@ export default defineComponent({
             },
             colors: ['#F08A24'],
             plotOptions: {
-              treemap: {
-                distributed: true,
-                enableShades: true,
-                shadeIntensity: 0.5
+              bar: {
+                borderRadius: 4,
+                columnWidth: '60%',
+                dataLabels: {
+                  position: 'top'
+                }
               }
             },
             dataLabels: {
               enabled: true,
-              style: {
-                fontSize: '12px',
-                fontWeight: 'bold',
-                colors: ['#fff']
+              formatter: function (val) {
+                return val + 's';
               },
-              formatter: function(text, op) {
-                return [text, op.value + '%'];
+              offsetY: -20,
+              style: {
+                fontSize: '11px',
+                colors: ['#fff'],
+                fontWeight: 'bold'
               }
             },
-            legend: {
-              show: false
+            xaxis: {
+              categories: ['Min 1', 'Min 2', 'Min 3', 'Min 4', 'Min 5', 'Min 6', 'Min 7', 'Min 8', 'Min 9', 'Min 10'],
+              labels: {
+                style: {
+                  colors: '#aaa',
+                  fontSize: '11px'
+                }
+              },
+              axisBorder: {
+                show: false
+              },
+              axisTicks: {
+                show: false
+              }
+            },
+            yaxis: {
+              min: 0,
+              max: 2.0,
+              labels: {
+                style: {
+                  colors: '#aaa',
+                  fontSize: '11px'
+                },
+                formatter: function (val) {
+                  return val + 's';
+                }
+              }
+            },
+            grid: {
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              strokeDashArray: 3,
+              xaxis: {
+                lines: {
+                  show: false
+                }
+              }
             },
             tooltip: {
               theme: 'dark',
               y: {
                 formatter: function(val) {
-                  return val + '%';
+                  return val + ' segundos';
                 }
               }
+            },
+            annotations: {
+              yaxis: [{
+                y: 1.5,
+                borderColor: '#FF4560',
+                borderWidth: 2,
+                strokeDashArray: 5,
+                label: {
+                  borderColor: '#FF4560',
+                  style: {
+                    color: '#fff',
+                    background: '#FF4560',
+                    fontSize: '10px'
+                  },
+                  text: 'Objetivo: 1.5s'
+                }
+              }]
             }
           };
           
-          scanErrorChartInstance = new ApexCharts(scanErrorChart.value, options);
-          scanErrorChartInstance.render();
+          newsBarChartInstance = new ApexCharts(newsLoadingChart.value, options);
+          newsBarChartInstance.render();
         }
         
-        // 3. Renderizar gráfico personalizado para tiempo de carga de noticias
-        renderNewsLoadingChart();
-        
-        // 4. Inicializar ApexCharts para el gráfico de copias de seguridad (POLAR AREA)
+        // 4. Inicializar ApexCharts para el gráfico circular de copias de seguridad
         if (backupChart.value) {
           const options = {
-            series: [25, 15, 44, 12],
+            series: [96],
             chart: {
-              type: 'polarArea',
               height: '100%',
+              type: 'radialBar',
               toolbar: {
                 show: false
               },
               background: 'transparent'
             },
-            labels: ['Completas', 'Parciales', 'Incrementales', 'Fallidas'],
+            plotOptions: {
+              radialBar: {
+                startAngle: -135,
+                endAngle: 135,
+                hollow: {
+                  margin: 0,
+                  size: '70%',
+                  background: 'transparent',
+                },
+                track: {
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  strokeWidth: '97%',
+                  margin: 5,
+                  dropShadow: {
+                    enabled: false
+                  }
+                },
+                dataLabels: {
+                  name: {
+                    show: false
+                  },
+                  value: {
+                    offsetY: 10,
+                    color: '#F08A24',
+                    fontSize: '26px',
+                    fontWeight: 600,
+                    formatter: function (val) {
+                      return val + '%';
+                    }
+                  }
+                }
+              }
+            },
             fill: {
-              opacity: 0.8
+              type: 'gradient',
+              gradient: {
+                shade: 'dark',
+                type: 'horizontal',
+                shadeIntensity: 0.5,
+                gradientToColors: ['#F08A24'],
+                inverseColors: true,
+                opacityFrom: 1,
+                opacityTo: 1,
+                stops: [0, 100]
+              }
             },
             stroke: {
-              width: 1,
-              colors: ['#1E1E1E']
+              dashArray: 4
             },
-            yaxis: {
-              show: false
-            },
-            legend: {
-              position: 'bottom',
-              fontSize: '10px',
-              labels: {
-                colors: '#aaa'
-              },
-              markers: {
-                width: 8,
-                height: 8
-              }
-            },
-            plotOptions: {
-              polarArea: {
-                rings: {
-                  strokeWidth: 0
-                },
-                spokes: {
-                  strokeWidth: 0
-                }
-              }
-            },
-            colors: ['#F08A24', '#FFAB00', '#FF4560', '#775DD0'],
-            tooltip: {
-              theme: 'dark',
-              y: {
-                formatter: function(val) {
-                  return val + '%';
-                }
-              }
-            }
+            colors: ['#F08A24'],
+            labels: ['Completadas']
           };
           
-          backupChartInstance = new ApexCharts(backupChart.value, options);
-          backupChartInstance.render();
+          donutChartInstance = new ApexCharts(backupChart.value, options);
+          donutChartInstance.render();
         }
         
         // Manejar el redimensionamiento para todos los gráficos
         const handleResize = () => {
-          if (scanErrorChartInstance) {
-            scanErrorChartInstance.render();
+          if (heatmapChartInstance) {
+            heatmapChartInstance.resize();
           }
-          if (backupChartInstance) {
-            backupChartInstance.render();
+          if (newsBarChartInstance) {
+            newsBarChartInstance.render();
           }
-          renderNewsLoadingChart();
+          if (donutChartInstance) {
+            donutChartInstance.render();
+          }
         };
         
         window.addEventListener('resize', handleResize);
         
         // Iniciar la actualización en tiempo real para el gráfico de disponibilidad
         updateInterval = setInterval(updateAvailabilityChart, 3000);
-      }, 300);
+      }, 500);
     });
     
     onUnmounted(() => {
@@ -581,12 +611,20 @@ export default defineComponent({
       }
       
       // Destruir las instancias de los gráficos
-      if (scanErrorChartInstance) {
-        scanErrorChartInstance.destroy();
+      if (heatmapChartInstance) {
+        heatmapChartInstance.dispose();
       }
       
-      if (backupChartInstance) {
-        backupChartInstance.destroy();
+      if (newsBarChartInstance) {
+        newsBarChartInstance.destroy();
+      }
+      
+      if (donutChartInstance) {
+        donutChartInstance.destroy();
+      }
+      
+      if (chartJsInstance) {
+        chartJsInstance.destroy();
       }
       
       // Eliminar el event listener
@@ -716,10 +754,79 @@ h3 {
   min-height: 150px;
 }
 
+/* Contenedor específico para el mapa de calor */
+.heatmap-chart {
+  width: 100%;
+  height: 100%;
+  min-height: 150px;
+}
+
 /* Contenedor para el gráfico circular */
 .donut-chart-container {
   width: 100%;
   height: 100%;
+}
+
+/* Leyenda para el mapa de calor de errores */
+.error-legend {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #aaa;
+}
+
+.legend-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.legend-color.high {
+  background-color: #F44336;
+}
+
+.legend-color.medium {
+  background-color: #FF9800;
+}
+
+.legend-color.low {
+  background-color: #2E7D32;
+}
+
+/* Información para el gráfico de tiempo de carga */
+.loading-info {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.info-label {
+  font-size: 11px;
+  color: #aaa;
+}
+
+.info-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #F08A24;
 }
 
 /* Ajustes para pantallas más grandes */

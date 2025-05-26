@@ -26,19 +26,25 @@
             </ion-col>
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
-                <!-- 2. Gráfico de Chart.js - Valoración media de usuarios (RADAR CHART) -->
+                <!-- 2. Gráfico de Chart.js - Evaluación por aspectos (ESTRELLA) -->
                 <div class="chart-container">
-                  <h3>Valoración media de usuarios</h3>
+                  <h3>Evaluación de la App</h3>
                   <div class="kpi-value">{{ averageRating }}<span class="unit">/5</span></div>
                   <div class="chart-wrapper">
                     <canvas ref="ratingChart"></canvas>
+                  </div>
+                  <div class="rating-legend">
+                    <div class="legend-item">
+                      <span class="legend-color" style="background-color: rgba(240, 138, 36, 0.8)"></span>
+                      <span>Puntuación actual</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </ion-col>
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
-                <!-- 3. Gráfico de ApexCharts - Usuarios activos en creación de mazos (TIEMPO REAL) -->
+                <!-- 3. Gráfico de ApexCharts - Usuarios activos en creación de mazos (AHORA EN TIEMPO REAL) -->
                 <div class="chart-container">
                   <div class="chart-header">
                     <h3>Usuarios activos en creación de mazos</h3>
@@ -60,9 +66,15 @@
           <ion-row>
             <ion-col size="12" size-md="8">
               <div class="dashboard-card">
-                <!-- 4. Gráfico de ECharts - Tasa de conversión de compradores (GAUGE CHART) -->
+                <!-- 4. Gráfico de ECharts - Tasa de conversión de compradores (BARRAS HORIZONTALES) -->
                 <div class="chart-container">
-                  <h3>Tasa de conversión de compradores</h3>
+                  <div class="chart-header">
+                    <h3>Evolución de tasa de conversión</h3>
+                    <div class="conversion-status">
+                      <span class="status-indicator success"></span>
+                      <span class="status-text">Objetivo superado</span>
+                    </div>
+                  </div>
                   <div class="kpi-value">{{ conversionRate }}<span class="unit">%</span></div>
                   <div ref="conversionChart" class="echarts-container"></div>
                 </div>
@@ -70,7 +82,7 @@
             </ion-col>
             <ion-col size="12" size-md="4">
               <div class="dashboard-card">
-                <!-- 5. Gráfico de feedback (HEATMAP) -->
+                <!-- 5. Gráfico de feedback -->
                 <div class="chart-container">
                   <h3>Respuestas de feedback</h3>
                   <div class="kpi-value">{{ feedbackResponses }}<span class="unit">respuestas</span></div>
@@ -145,9 +157,8 @@ export default defineComponent({
 
     // Inicializar etiquetas de tiempo
     const initTimeLabels = () => {
-      timeLabels.length = 0; // Limpiar array
+      timeLabels.length = 0;
       const now = new Date();
-      // Crear etiquetas para los últimos 30 minutos en intervalos de 5 minutos
       for (let i = 5; i >= 0; i--) {
         const time = new Date(now.getTime() - i * 5 * 60000);
         const timeString = `${time.getHours()}:${time.getMinutes().toString().padStart(2, '0')}`;
@@ -158,67 +169,50 @@ export default defineComponent({
     // Función para actualizar el gráfico de usuarios activos en tiempo real
     const updateActiveUsersChart = () => {
       if (apexChartInstance) {
-        // Obtener el último valor
         const lastValue = activeUsersData[activeUsersData.length - 1];
-        
-        // Calcular tendencia basada en la hora del día
         const now = new Date();
         const hour = now.getHours();
         
-        // Simular patrones de uso más realistas basados en la hora
         let baseTrend = 0;
         
-        // Más usuarios activos durante la tarde/noche (17:00-23:00)
         if (hour >= 17 && hour < 23) {
           baseTrend = 15;
         } 
-        // Menos usuarios por la mañana temprano (0:00-8:00)
         else if (hour < 8) {
           baseTrend = -10;
         } 
-        // Actividad moderada durante el día (8:00-17:00)
         else {
           baseTrend = 5;
         }
         
-        // Añadir variación aleatoria significativa para crear picos y valles
         const randomFactor = Math.random();
         let variation;
         
         if (randomFactor < 0.2) {
-          // 20% de probabilidad de una caída significativa
           variation = Math.floor(Math.random() * -80) - 30;
         } else if (randomFactor < 0.4) {
-          // 20% de probabilidad de un pico significativo
           variation = Math.floor(Math.random() * 80) + 30;
         } else {
-          // 60% de probabilidad de fluctuaciones menores
           variation = Math.floor(Math.random() * 40) - 20;
         }
         
-        // Calcular el nuevo valor con la tendencia base y la variación
         const newValue = Math.max(3000, Math.min(3500, lastValue + baseTrend + variation));
         activeUsers.value = newValue;
         
-        // Actualizar datos manteniendo un número fijo de puntos
         const MAX_POINTS = 12;
         
-        // Añadir nuevo valor
         activeUsersData.push(newValue);
         
-        // Mantener solo los últimos MAX_POINTS puntos
         if (activeUsersData.length > MAX_POINTS) {
           activeUsersData.shift();
         }
         
-        // Actualizar etiquetas de tiempo
         const timeString = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
         timeLabels.push(timeString);
         if (timeLabels.length > MAX_POINTS) {
           timeLabels.shift();
         }
         
-        // Actualizar el gráfico con los nuevos datos
         apexChartInstance.updateSeries([{
           data: activeUsersData
         }]);
@@ -226,71 +220,114 @@ export default defineComponent({
         apexChartInstance.updateOptions({
           xaxis: {
             categories: timeLabels
+          },
+          chart: {
+            animations: {
+              enabled: true,
+              easing: 'easeinout',
+              speed: 800,
+              animateGradually: {
+                enabled: true,
+                delay: 150
+              },
+              dynamicAnimation: {
+                enabled: true,
+                speed: 350
+              }
+            }
           }
         });
       }
     };
     
     onMounted(() => {
-      // Asegurarse de que los contenedores de gráficos tengan el tamaño correcto
       setTimeout(() => {
-        // 1. Inicializar Chart.js para el gráfico de valoración (RADAR CHART)
+        // 1. Inicializar Chart.js para el gráfico de evaluación en forma de estrella (radar)
         if (ratingChart.value) {
           const ctx = ratingChart.value.getContext('2d');
           
+          // Datos de evaluación por aspectos (escala de 1-5)
+          const aspectsData = {
+            labels: ['Diseño', 'Accesibilidad', 'Eficiencia', 'Usabilidad'],
+            datasets: [{
+              label: 'Evaluación',
+              data: [4.8, 4.2, 4.9, 4.6], // Puntuaciones de cada aspecto
+              backgroundColor: 'rgba(240, 138, 36, 0.3)',
+              borderColor: 'rgba(240, 138, 36, 0.8)',
+              borderWidth: 3,
+              pointBackgroundColor: 'rgba(240, 138, 36, 1)',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              pointRadius: 6,
+              pointHoverRadius: 8,
+              pointHoverBackgroundColor: 'rgba(240, 138, 36, 1)',
+              pointHoverBorderColor: '#fff',
+              pointHoverBorderWidth: 3
+            }]
+          };
+          
           chartJsRatingInstance = new Chart(ctx, {
             type: 'radar',
-            data: {
-              labels: ['Usabilidad', 'Diseño', 'Funcionalidad', 'Velocidad', 'Estabilidad'],
-              datasets: [{
-                label: 'Valoración',
-                data: [4.8, 4.9, 4.5, 4.6, 4.7],
-                backgroundColor: 'rgba(240, 138, 36, 0.3)',
-                borderColor: '#F08A24',
-                borderWidth: 2,
-                pointBackgroundColor: '#F08A24',
-                pointBorderColor: '#fff',
-                pointHoverBackgroundColor: '#fff',
-                pointHoverBorderColor: '#F08A24'
-              }]
-            },
+            data: aspectsData,
             options: {
               responsive: true,
               maintainAspectRatio: false,
-              scales: {
-                r: {
-                  angleLines: {
-                    color: 'rgba(255, 255, 255, 0.1)'
-                  },
-                  grid: {
-                    color: 'rgba(255, 255, 255, 0.1)'
-                  },
-                  pointLabels: {
-                    color: '#aaa',
-                    font: {
-                      size: 10
-                    }
-                  },
-                  ticks: {
-                    color: '#aaa',
-                    backdropColor: 'transparent',
-                    stepSize: 1,
-                    max: 5,
-                    min: 0
-                  }
-                }
-              },
               plugins: {
                 legend: {
                   display: false
                 },
                 tooltip: {
-                  backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
                   titleColor: '#fff',
                   bodyColor: '#fff',
                   borderColor: '#F08A24',
-                  borderWidth: 1
+                  borderWidth: 1,
+                  callbacks: {
+                    label: function(context) {
+                      return `${context.label}: ${context.parsed.r}/5`;
+                    }
+                  }
                 }
+              },
+              scales: {
+                r: {
+                  beginAtZero: true,
+                  min: 0,
+                  max: 5,
+                  ticks: {
+                    stepSize: 1,
+                    color: '#666',
+                    backdropColor: 'transparent',
+                    font: {
+                      size: 10
+                    }
+                  },
+                  grid: {
+                    color: 'rgba(255, 255, 255, 0.2)',
+                    lineWidth: 1
+                  },
+                  angleLines: {
+                    color: 'rgba(255, 255, 255, 0.2)',
+                    lineWidth: 1
+                  },
+                  pointLabels: {
+                    color: '#ccc',
+                    font: {
+                      size: 12,
+                      weight: '500'
+                    },
+                    padding: 15
+                  }
+                }
+              },
+              elements: {
+                line: {
+                  tension: 0.1
+                }
+              },
+              animation: {
+                duration: 1500,
+                easing: 'easeInOutQuart'
               }
             }
           });
@@ -299,31 +336,22 @@ export default defineComponent({
         // Inicializar etiquetas de tiempo
         initTimeLabels();
 
-        // 2. Inicializar ApexCharts para el gráfico de usuarios activos (CANDLESTICK CHART)
+        // 2. Inicializar ApexCharts para el gráfico de usuarios activos EN TIEMPO REAL
         if (activeUsersChart.value) {
-          // Generar datos para candlestick
-          const candleData = [];
+          activeUsersData.length = 0;
           const baseValue = 3200;
-          
           for (let i = 0; i < 12; i++) {
-            const open = baseValue + Math.floor(Math.random() * 200) - 100;
-            const close = open + Math.floor(Math.random() * 100) - 50;
-            const low = Math.min(open, close) - Math.floor(Math.random() * 50);
-            const high = Math.max(open, close) + Math.floor(Math.random() * 50);
-            
-            candleData.push({
-              x: timeLabels[i] || `${i}:00`,
-              y: [open, high, low, close]
-            });
+            const randomVariation = Math.floor(Math.random() * 300) - 150;
+            activeUsersData.push(baseValue + randomVariation);
           }
           
           const options = {
             series: [{
               name: 'Usuarios activos',
-              data: candleData
+              data: activeUsersData
             }],
             chart: {
-              type: 'candlestick',
+              type: 'area',
               height: '100%',
               toolbar: {
                 show: false
@@ -333,28 +361,56 @@ export default defineComponent({
               animations: {
                 enabled: true,
                 easing: 'easeinout',
-                speed: 800
-              }
-            },
-            plotOptions: {
-              candlestick: {
-                colors: {
-                  upward: '#F08A24',
-                  downward: '#FF4560'
+                speed: 800,
+                animateGradually: {
+                  enabled: true,
+                  delay: 150
                 },
-                wick: {
-                  useFillColor: true
+                dynamicAnimation: {
+                  enabled: true,
+                  speed: 350
                 }
               }
             },
+            colors: ['#F08A24'],
+            stroke: {
+              curve: 'smooth',
+              width: 3
+            },
+            fill: {
+              type: 'gradient',
+              gradient: {
+                shadeIntensity: 1,
+                opacityFrom: 0.7,
+                opacityTo: 0.2,
+                stops: [0, 90, 100]
+              }
+            },
+            dataLabels: {
+              enabled: false
+            },
+            markers: {
+              size: 4,
+              colors: ['#F08A24'],
+              strokeColors: '#fff',
+              strokeWidth: 2,
+              hover: {
+                size: 6
+              }
+            },
             xaxis: {
-              type: 'category',
+              categories: timeLabels,
               labels: {
                 style: {
                   colors: '#aaa'
                 },
                 rotate: -45,
-                rotateAlways: false
+                rotateAlways: false,
+                hideOverlappingLabels: true,
+                maxHeight: 50
+              },
+              tooltip: {
+                enabled: false
               }
             },
             yaxis: {
@@ -371,208 +427,260 @@ export default defineComponent({
               tickAmount: 5
             },
             grid: {
-              borderColor: 'rgba(255, 255, 255, 0.1)'
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              padding: {
+                top: 0,
+                right: 10,
+                bottom: 0,
+                left: 10
+              },
+              xaxis: {
+                lines: {
+                  show: false
+                }
+              }
             },
             tooltip: {
               theme: 'dark',
-              custom: function({ seriesIndex, dataPointIndex, w }) {
-                const data = w.globals.initialSeries[seriesIndex].data[dataPointIndex];
-                return `
-                  <div class="apexcharts-tooltip-candlestick" style="padding: 8px; background: rgba(0,0,0,0.8); color: #fff; border: 1px solid #F08A24;">
-                    <div>Hora: ${data.x}</div>
-                    <div>Apertura: ${data.y[0]}</div>
-                    <div>Máximo: ${data.y[1]}</div>
-                    <div>Mínimo: ${data.y[2]}</div>
-                    <div>Cierre: ${data.y[3]}</div>
-                  </div>
-                `;
+              x: {
+                show: true
+              },
+              y: {
+                formatter: function(val) {
+                  return val.toFixed(0) + ' usuarios';
+                }
+              },
+              marker: {
+                show: true
               }
-            }
+            },
+            responsive: [{
+              breakpoint: 576,
+              options: {
+                chart: {
+                  height: '200px'
+                },
+                markers: {
+                  size: 3
+                }
+              }
+            }]
           };
           
           apexChartInstance = new ApexCharts(activeUsersChart.value, options);
           apexChartInstance.render();
           
-          // Actualizar el valor actual para mostrar
-          activeUsers.value = candleData[candleData.length - 1].y[3];
+          initTimeLabels();
+          updateActiveUsersChart();
         }
         
-        // 3. Inicializar ECharts para el gráfico de tasa de conversión (GAUGE CHART)
+        // 3. Inicializar ECharts para el gráfico de tasa de conversión (BARRAS HORIZONTALES)
         if (conversionChart.value) {
           echartsInstance = echarts.init(conversionChart.value);
           
+          const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct'];
+          const conversionData = [5.2, 5.5, 5.8, 6.2, 6.5, 6.8, 7.2, 7.5, 7.9, 8.3];
+          const targetLine = 7.0; // Línea objetivo
+          
           const option = {
+            tooltip: {
+              trigger: 'axis',
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              borderColor: '#F08A24',
+              borderWidth: 1,
+              textStyle: {
+                color: '#fff'
+              },
+              formatter: function(params) {
+                const dataPoint = params[0];
+                const isAboveTarget = dataPoint.value >= targetLine;
+                const status = isAboveTarget ? '✅ Objetivo superado' : '⚠️ Por debajo del objetivo';
+                return `${dataPoint.name}: ${dataPoint.value}%<br/>
+                        Objetivo: ${targetLine}%<br/>
+                        ${status}`;
+              }
+            },
+            grid: {
+              top: 20,
+              right: 30,
+              bottom: 40,
+              left: 50,
+              containLabel: true
+            },
+            xAxis: {
+              type: 'value',
+              min: 0,
+              max: 10,
+              axisLine: {
+                lineStyle: {
+                  color: 'rgba(255, 255, 255, 0.2)'
+                }
+              },
+              splitLine: {
+                lineStyle: {
+                  color: 'rgba(255, 255, 255, 0.1)'
+                }
+              },
+              axisLabel: {
+                color: '#aaa',
+                fontSize: 11,
+                formatter: '{value}%'
+              }
+            },
+            yAxis: {
+              type: 'category',
+              data: months,
+              axisLine: {
+                lineStyle: {
+                  color: 'rgba(255, 255, 255, 0.2)'
+                }
+              },
+              axisTick: {
+                show: false
+              },
+              axisLabel: {
+                color: '#aaa',
+                fontSize: 11,
+                margin: 8
+              }
+            },
             series: [
               {
-                type: 'gauge',
-                startAngle: 180,
-                endAngle: 0,
-                center: ['50%', '75%'],
-                radius: '90%',
-                min: 0,
-                max: 15,
-                splitNumber: 5,
-                axisLine: {
-                  lineStyle: {
-                    width: 6,
-                    color: [
-                      [0.3, '#FF4560'],
-                      [0.7, '#FFAB00'],
-                      [1, '#F08A24']
-                    ]
-                  }
-                },
-                pointer: {
-                  icon: 'path://M12.8,0.7l12,40.1H0.7L12.8,0.7z',
-                  length: '12%',
-                  width: 6,
-                  offsetCenter: [0, '-60%'],
+                name: 'Tasa de conversión',
+                type: 'bar',
+                data: conversionData.map((value, index) => ({
+                  value: value,
                   itemStyle: {
-                    color: '#F08A24'
+                    color: value >= targetLine 
+                      ? new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                          { offset: 0, color: '#F08A24' },
+                          { offset: 1, color: '#FFB366' }
+                        ])
+                      : new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                          { offset: 0, color: '#FF6B6B' },
+                          { offset: 1, color: '#FF8E8E' }
+                        ])
                   }
+                })),
+                barWidth: '60%',
+                label: {
+                  show: true,
+                  position: 'right',
+                  color: '#fff',
+                  fontSize: 11,
+                  fontWeight: 'bold',
+                  formatter: '{c}%'
                 },
-                axisTick: {
-                  length: 12,
+                markLine: {
+                  silent: true,
                   lineStyle: {
-                    color: 'auto',
-                    width: 1
-                  }
-                },
-                splitLine: {
-                  length: 20,
-                  lineStyle: {
-                    color: 'auto',
+                    color: '#F08A24',
+                    type: 'dashed',
                     width: 2
-                  }
-                },
-                axisLabel: {
-                  color: '#aaa',
-                  fontSize: 10,
-                  distance: -60,
-                  formatter: function(value) {
-                    return value + '%';
-                  }
-                },
-                title: {
-                  offsetCenter: [0, '-20%'],
-                  fontSize: 12,
-                  color: '#aaa'
-                },
-                detail: {
-                  fontSize: 30,
-                  offsetCenter: [0, '0%'],
-                  valueAnimation: true,
-                  formatter: function(value) {
-                    return value + '%';
                   },
-                  color: '#F08A24'
-                },
-                data: [
-                  {
-                    value: 8.3,
-                    name: 'Conversión'
-                  }
-                ]
+                  label: {
+                    show: true,
+                    position: 'end',
+                    formatter: 'Objetivo: 7%',
+                    color: '#F08A24',
+                    fontSize: 11,
+                    fontWeight: 'bold'
+                  },
+                  data: [
+                    {
+                      xAxis: targetLine
+                    }
+                  ]
+                }
               }
             ],
-            animation: true
+            animation: true,
+            animationDuration: 1000,
+            animationEasing: 'cubicOut'
           };
           
           echartsInstance.setOption(option);
         }
         
-        // 4. Inicializar ApexCharts para el gráfico de feedback (HEATMAP)
+        // 4. Inicializar ApexCharts para el gráfico de feedback como PIE CHART
         if (feedbackChart.value) {
-          // Generar datos para el heatmap
-          const generateHeatmapData = () => {
-            const categories = ['Escaneo', 'Interfaz', 'Búsqueda', 'Precios', 'Mazos'];
-            const series = [];
-            
-            for (let i = 0; i < 5; i++) {
-              const data = [];
-              for (let j = 0; j < 5; j++) {
-                // Más feedback positivo que negativo
-                const value = Math.floor(Math.random() * 30) + (5 - j) * 10;
-                data.push(value);
-              }
-              series.push({
-                name: categories[i],
-                data: data
-              });
-            }
-            
-            return series;
-          };
-          
           const options = {
-            series: generateHeatmapData(),
+            series: [90, 10],
             chart: {
+              type: 'donut',
               height: '100%',
-              type: 'heatmap',
               toolbar: {
                 show: false
               },
               background: 'transparent'
             },
+            labels: ['Positivo', 'Negativo'],
+            colors: ['#F08A24', '#FF4560'],
+            plotOptions: {
+              pie: {
+                donut: {
+                  size: '55%',
+                  labels: {
+                    show: true,
+                    name: {
+                      show: true,
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      color: '#fff',
+                      offsetY: -10
+                    },
+                    value: {
+                      show: true,
+                      fontSize: '16px',
+                      fontWeight: 400,
+                      color: '#fff',
+                      offsetY: 5,
+                      formatter: function (val) {
+                        return val + '%';
+                      }
+                    },
+                    total: {
+                      show: true,
+                      label: 'Total',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      color: '#fff',
+                      formatter: function () {
+                        return '427';
+                      }
+                    }
+                  }
+                }
+              }
+            },
             dataLabels: {
               enabled: false
             },
-            colors: ['#F08A24'],
-            xaxis: {
-              categories: ['Excelente', 'Bueno', 'Normal', 'Regular', 'Malo'],
+            legend: {
+              position: 'bottom',
+              horizontalAlign: 'center',
+              fontSize: '12px',
               labels: {
-                style: {
-                  colors: '#aaa',
-                  fontSize: '10px'
-                },
-                rotate: 0
+                colors: '#aaa'
+              },
+              markers: {
+                width: 12,
+                height: 12,
+                radius: 12
+              },
+              itemMargin: {
+                horizontal: 10,
+                vertical: 0
               }
             },
-            yaxis: {
-              labels: {
-                style: {
-                  colors: '#aaa',
-                  fontSize: '10px'
-                }
-              }
-            },
-            plotOptions: {
-              heatmap: {
-                colorScale: {
-                  ranges: [
-                    {
-                      from: 0,
-                      to: 20,
-                      color: 'rgba(240, 138, 36, 0.2)',
-                      name: 'bajo'
-                    },
-                    {
-                      from: 21,
-                      to: 40,
-                      color: 'rgba(240, 138, 36, 0.4)',
-                      name: 'medio'
-                    },
-                    {
-                      from: 41,
-                      to: 60,
-                      color: 'rgba(240, 138, 36, 0.6)',
-                      name: 'alto'
-                    },
-                    {
-                      from: 61,
-                      to: 100,
-                      color: 'rgba(240, 138, 36, 0.8)',
-                      name: 'muy alto'
-                    }
-                  ]
-                }
-              }
+            stroke: {
+              width: 0
             },
             tooltip: {
               theme: 'dark',
               y: {
                 formatter: function(val) {
-                  return val + ' respuestas';
+                  return val + '%';
                 }
               }
             }
@@ -597,18 +705,15 @@ export default defineComponent({
         
         window.addEventListener('resize', handleResize);
         
-        // Iniciar la actualización en tiempo real para el gráfico de usuarios activos
         updateActiveUsersInterval = setInterval(updateActiveUsersChart, 2000);
       }, 300);
     });
     
     onUnmounted(() => {
-      // Limpiar el intervalo cuando el componente se desmonta
       if (updateActiveUsersInterval) {
         clearInterval(updateActiveUsersInterval);
       }
       
-      // Destruir las instancias de los gráficos
       if (echartsInstance) {
         echartsInstance.dispose();
       }
@@ -621,7 +726,6 @@ export default defineComponent({
         feedbackChartInstance.destroy();
       }
       
-      // Eliminar el event listener
       window.removeEventListener('resize', () => {});
     });
     
@@ -752,6 +856,57 @@ h3 {
   flex: 1;
   width: 100%;
   min-height: 150px;
+}
+
+/* Leyenda para el gráfico de evaluación */
+.rating-legend {
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #aaa;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+/* Indicador de estado para conversión */
+.conversion-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-indicator.success {
+  background-color: #00E396;
+  box-shadow: 0 0 6px rgba(0, 227, 150, 0.5);
+}
+
+.status-indicator.warning {
+  background-color: #FEB019;
+  box-shadow: 0 0 6px rgba(254, 176, 25, 0.5);
+}
+
+.status-text {
+  font-size: 12px;
+  color: #00E396;
+  font-weight: 500;
 }
 
 /* Ajustes para pantallas más grandes */
