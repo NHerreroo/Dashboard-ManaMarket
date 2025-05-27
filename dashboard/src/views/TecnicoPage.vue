@@ -18,29 +18,74 @@
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
                 <!-- 1. Tiempo medio de respuesta -->
-                <response-time-chart 
-                  title="Tiempo medio de respuesta"
-                  :data="responseTimeData" 
-                  :current-value="245"
-                  :maxValue="300"
-                  unit="ms"
-                />
+                <div class="chart-container-with-objective">
+                  <div 
+                    class="objective-icon"
+                    @mouseenter="showObjectiveTooltip('response')"
+                    @mouseleave="hideObjectiveTooltip"
+                  >
+                    <span v-if="isResponseTimeObjectiveMet" class="icon-success">✅</span>
+                    <span v-else class="icon-pending">⏳</span>
+                  </div>
+                  <div 
+                    v-if="tooltipVisible === 'response'" 
+                    class="objective-tooltip"
+                  >
+                    <div class="tooltip-content">
+                      <strong>Objetivo: Reducir a 230ms próximo mes</strong>
+                      <div>Actual: {{ currentResponseTime }}ms</div>
+                      <div>Reducir: {{ Math.max(0, currentResponseTime - 230) }}ms</div>
+                      <div :class="isResponseTimeObjectiveMet ? 'status-success' : 'status-pending'">
+                        {{ isResponseTimeObjectiveMet ? '✅ Objetivo cumplido' : '⏳ En progreso' }}
+                      </div>
+                    </div>
+                  </div>
+                  <response-time-chart 
+                    title="Tiempo medio de respuesta"
+                    :data="responseTimeData" 
+                    :current-value="currentResponseTime"
+                    :maxValue="300"
+                    unit="ms"
+                  />
+                </div>
               </div>
             </ion-col>
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
                 <!-- 2. Disponibilidad del sistema -->
-                <div class="chart-container">
-                  <div class="chart-header">
-                    <h3>Disponibilidad del sistema</h3>
-                    <div class="live-badge">
-                      <div class="pulse"></div>
-                      <span>En vivo</span>
+                <div class="chart-container-with-objective">
+                  <div 
+                    class="objective-icon"
+                    @mouseenter="showObjectiveTooltip('availability')"
+                    @mouseleave="hideObjectiveTooltip"
+                  >
+                    <span v-if="isAvailabilityObjectiveMet" class="icon-success">✅</span>
+                    <span v-else class="icon-pending">⏳</span>
+                  </div>
+                  <div 
+                    v-if="tooltipVisible === 'availability'" 
+                    class="objective-tooltip"
+                  >
+                    <div class="tooltip-content">
+                      <strong>Objetivo: Mantener 99.8% constante</strong>
+                      <div>Actual: {{ systemAvailability }}%</div>
+                      <div :class="isAvailabilityObjectiveMet ? 'status-success' : 'status-pending'">
+                        {{ isAvailabilityObjectiveMet ? '✅ Objetivo cumplido' : '⚠️ Por debajo del objetivo' }}
+                      </div>
                     </div>
                   </div>
-                  <div class="kpi-value">{{ systemAvailability }}<span class="unit">%</span></div>
-                  <div class="chart-wrapper">
-                    <canvas ref="availabilityChart"></canvas>
+                  <div class="chart-container">
+                    <div class="chart-header">
+                      <h3>Disponibilidad del sistema</h3>
+                      <div class="live-badge">
+                        <div class="pulse"></div>
+                        <span>En vivo</span>
+                      </div>
+                    </div>
+                    <div class="kpi-value">{{ systemAvailability }}<span class="unit">%</span></div>
+                    <div class="chart-wrapper">
+                      <canvas ref="availabilityChart"></canvas>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -48,24 +93,48 @@
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
                 <!-- 3. Mapa de calor de escaneos de cartas MTG -->
-                <div class="chart-container">
-                  <h3>🃏 Mapa de escaneos de cartas</h3>
-                  <div class="kpi-value">{{ scanErrorRate }}<span class="unit">%</span></div>
-                  <div class="chart-wrapper">
-                    <div ref="scanErrorChart" class="heatmap-chart"></div>
+                <div class="chart-container-with-objective">
+                  <div 
+                    class="objective-icon"
+                    @mouseenter="showObjectiveTooltip('scan')"
+                    @mouseleave="hideObjectiveTooltip"
+                  >
+                    <span v-if="isScanErrorObjectiveMet" class="icon-success">✅</span>
+                    <span v-else class="icon-pending">⏳</span>
                   </div>
-                  <div class="error-legend">
-                    <div class="legend-item">
-                      <span class="legend-color high"></span>
-                      <span>Alto (&gt;5%)</span>
+                  <div 
+                    v-if="tooltipVisible === 'scan'" 
+                    class="objective-tooltip"
+                  >
+                    <div class="tooltip-content">
+                      <strong>Objetivo: Reducir tasa error al 2%</strong>
+                      <strong>Para fin de año</strong>
+                      <div>Actual: {{ scanErrorRate }}%</div>
+                      <div>Reducir: {{ Math.max(0, (scanErrorRate - 2).toFixed(1)) }}%</div>
+                      <div :class="isScanErrorObjectiveMet ? 'status-success' : 'status-pending'">
+                        {{ isScanErrorObjectiveMet ? '✅ Objetivo cumplido' : '⏳ En progreso' }}
+                      </div>
                     </div>
-                    <div class="legend-item">
-                      <span class="legend-color medium"></span>
-                      <span>Medio (2-5%)</span>
+                  </div>
+                  <div class="chart-container">
+                    <h3>🃏 Mapa de escaneos de cartas</h3>
+                    <div class="kpi-value">{{ scanErrorRate }}<span class="unit">%</span></div>
+                    <div class="chart-wrapper">
+                      <div ref="scanErrorChart" class="heatmap-chart"></div>
                     </div>
-                    <div class="legend-item">
-                      <span class="legend-color low"></span>
-                      <span>Bajo (&lt;2%)</span>
+                    <div class="error-legend">
+                      <div class="legend-item">
+                        <span class="legend-color high"></span>
+                        <span>Alto (&gt;5%)</span>
+                      </div>
+                      <div class="legend-item">
+                        <span class="legend-color medium"></span>
+                        <span>Medio (2-5%)</span>
+                      </div>
+                      <div class="legend-item">
+                        <span class="legend-color low"></span>
+                        <span>Bajo (&lt;2%)</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -78,20 +147,44 @@
             <ion-col size="12" size-md="8">
               <div class="dashboard-card">
                 <!-- 4. Tiempo de carga de noticias (BARRAS) -->
-                <div class="chart-container">
-                  <h3>Tiempo de carga de noticias (últimos 10 min)</h3>
-                  <div class="kpi-value">{{ loadingTime }}<span class="unit">s</span></div>
-                  <div class="chart-wrapper">
-                    <div ref="newsLoadingChart"></div>
+                <div class="chart-container-with-objective">
+                  <div 
+                    class="objective-icon"
+                    @mouseenter="showObjectiveTooltip('loading')"
+                    @mouseleave="hideObjectiveTooltip"
+                  >
+                    <span v-if="isLoadingTimeObjectiveMet" class="icon-success">✅</span>
+                    <span v-else class="icon-pending">⏳</span>
                   </div>
-                  <div class="loading-info">
-                    <div class="info-item">
-                      <span class="info-label">Objetivo:</span>
-                      <span class="info-value">&lt; 1.5s</span>
+                  <div 
+                    v-if="tooltipVisible === 'loading'" 
+                    class="objective-tooltip"
+                  >
+                    <div class="tooltip-content">
+                      <strong>Objetivo: Mantener ≤ 1.5s</strong>
+                      <strong>Estabilizar en 1.2s próximos meses</strong>
+                      <div>Actual: {{ loadingTime }}s</div>
+                      <div>Meta futura: 1.2s</div>
+                      <div :class="isLoadingTimeObjectiveMet ? 'status-success' : 'status-pending'">
+                        {{ isLoadingTimeObjectiveMet ? '✅ Objetivo cumplido' : '⚠️ Por encima del objetivo' }}
+                      </div>
                     </div>
-                    <div class="info-item">
-                      <span class="info-label">Promedio:</span>
-                      <span class="info-value">{{ loadingTime }}s</span>
+                  </div>
+                  <div class="chart-container">
+                    <h3>Tiempo de carga de noticias (últimos 10 min)</h3>
+                    <div class="kpi-value">{{ loadingTime }}<span class="unit">s</span></div>
+                    <div class="chart-wrapper">
+                      <div ref="newsLoadingChart"></div>
+                    </div>
+                    <div class="loading-info">
+                      <div class="info-item">
+                        <span class="info-label">Objetivo:</span>
+                        <span class="info-value">&lt; 1.5s</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">Promedio:</span>
+                        <span class="info-value">{{ loadingTime }}s</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -100,11 +193,34 @@
             <ion-col size="12" size-md="4">
               <div class="dashboard-card">
                 <!-- 5. Copias de seguridad completadas (CIRCULAR) -->
-                <div class="chart-container">
-                  <h3>Copias de seguridad completadas</h3>
-                  <div class="kpi-value">{{ backupRate }}<span class="unit">%</span></div>
-                  <div class="chart-wrapper">
-                    <div ref="backupChart" class="donut-chart-container"></div>
+                <div class="chart-container-with-objective">
+                  <div 
+                    class="objective-icon"
+                    @mouseenter="showObjectiveTooltip('backup')"
+                    @mouseleave="hideObjectiveTooltip"
+                  >
+                    <span v-if="isBackupObjectiveMet" class="icon-success">✅</span>
+                    <span v-else class="icon-pending">⏳</span>
+                  </div>
+                  <div 
+                    v-if="tooltipVisible === 'backup'" 
+                    class="objective-tooltip"
+                  >
+                    <div class="tooltip-content">
+                      <strong>Objetivo: Incrementar tasa éxito a 98%</strong>
+                      <div>Actual: {{ backupRate }}%</div>
+                      <div>Incrementar: {{ Math.max(0, 98 - backupRate) }}%</div>
+                      <div :class="isBackupObjectiveMet ? 'status-success' : 'status-pending'">
+                        {{ isBackupObjectiveMet ? '✅ Objetivo cumplido' : '⏳ En progreso' }}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="chart-container">
+                    <h3>Copias de seguridad completadas</h3>
+                    <div class="kpi-value">{{ backupRate }}<span class="unit">%</span></div>
+                    <div class="chart-wrapper">
+                      <div ref="backupChart" class="donut-chart-container"></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -118,7 +234,7 @@
 
 <script>
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonGrid, IonRow, IonCol, IonButtons, IonMenuButton } from '@ionic/vue';
-import { defineComponent, ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { defineComponent, ref, onMounted, onUnmounted, nextTick, computed } from 'vue';
 import Chart from 'chart.js/auto';
 import * as echarts from 'echarts';
 import ApexCharts from 'apexcharts';
@@ -139,10 +255,30 @@ export default defineComponent({
     const backupChart = ref(null);
     
     // Datos para los KPIs
+    const currentResponseTime = ref(245);
     const systemAvailability = ref(99.8);
     const scanErrorRate = ref(3.7);
     const loadingTime = ref(1.2);
     const backupRate = ref(96);
+    
+    // Estado del tooltip
+    const tooltipVisible = ref(null);
+    
+    // Computed properties para verificar objetivos
+    const isResponseTimeObjectiveMet = computed(() => currentResponseTime.value <= 230);
+    const isAvailabilityObjectiveMet = computed(() => systemAvailability.value >= 99.8);
+    const isScanErrorObjectiveMet = computed(() => scanErrorRate.value <= 2.0);
+    const isLoadingTimeObjectiveMet = computed(() => loadingTime.value <= 1.5);
+    const isBackupObjectiveMet = computed(() => backupRate.value >= 98);
+    
+    // Funciones para manejar tooltips
+    const showObjectiveTooltip = (type) => {
+      tooltipVisible.value = type;
+    };
+    
+    const hideObjectiveTooltip = () => {
+      tooltipVisible.value = null;
+    };
     
     // Datos para los gráficos
     const responseTimeData = ref([230, 242, 255, 260, 248, 245, 238, 242, 250, 245]);
@@ -632,6 +768,7 @@ export default defineComponent({
     });
     
     return {
+      currentResponseTime,
       systemAvailability,
       scanErrorRate,
       loadingTime,
@@ -641,7 +778,15 @@ export default defineComponent({
       availabilityChart,
       scanErrorChart,
       newsLoadingChart,
-      backupChart
+      backupChart,
+      tooltipVisible,
+      isResponseTimeObjectiveMet,
+      isAvailabilityObjectiveMet,
+      isScanErrorObjectiveMet,
+      isLoadingTimeObjectiveMet,
+      isBackupObjectiveMet,
+      showObjectiveTooltip,
+      hideObjectiveTooltip
     };
   }
 });
@@ -682,6 +827,106 @@ export default defineComponent({
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Nuevo contenedor para gráficos con objetivos */
+.chart-container-with-objective {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Icono de objetivo */
+.objective-icon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  cursor: pointer;
+  font-size: 18px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(5px);
+}
+
+.chart-container-with-objective:hover .objective-icon {
+  opacity: 1;
+}
+
+.icon-success {
+  color: #00E396;
+  filter: drop-shadow(0 0 4px rgba(0, 227, 150, 0.5));
+}
+
+.icon-pending {
+  color: #FEB019;
+  filter: drop-shadow(0 0 4px rgba(254, 176, 25, 0.5));
+}
+
+/* Tooltip de objetivo */
+.objective-tooltip {
+  position: absolute;
+  top: 45px;
+  right: 8px;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.95);
+  border: 1px solid #F08A24;
+  border-radius: 8px;
+  padding: 12px;
+  min-width: 200px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  animation: fadeInTooltip 0.2s ease-out;
+}
+
+@keyframes fadeInTooltip {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tooltip-content {
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.tooltip-content strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #F08A24;
+  font-size: 13px;
+}
+
+.tooltip-content div {
+  margin-bottom: 3px;
+}
+
+.status-success {
+  color: #00E396;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.status-pending {
+  color: #FEB019;
+  font-weight: 600;
+  margin-top: 6px;
 }
 
 .chart-header {
@@ -833,6 +1078,15 @@ h3 {
 @media (min-width: 768px) {
   .dashboard-card {
     height: 350px;
+  }
+}
+
+/* Ajustes responsivos para tooltips */
+@media (max-width: 768px) {
+  .objective-tooltip {
+    right: 8px;
+    left: 8px;
+    min-width: auto;
   }
 }
 </style>

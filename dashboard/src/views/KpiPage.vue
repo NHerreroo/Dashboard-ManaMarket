@@ -39,7 +39,7 @@
                   </div>
                   <div class="smart-item">
                     <span class="smart-letter">A</span>
-                    <span class="smart-text">Alcanzable: Objetivo de alcanzar 15.000 descargas para finales del trimestre, basado en la tendencia de crecimiento actual (2.400 en diciembre).</span>
+                    <span class="smart-text">Alcanzable: Objetivo de alcanzar 15.000 descargas para finales del año, basado en la tendencia de crecimiento actual (2.400 en diciembre).</span>
                   </div>
                   <div class="smart-item">
                     <span class="smart-letter">R</span>

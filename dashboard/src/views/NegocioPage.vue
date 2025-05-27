@@ -18,25 +18,70 @@
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
                 <!-- 1. Gráfico propio (componente) - Número de descargas -->
-                <downloads-chart 
-                  :data="downloadsData" 
-                  :current-value="totalDownloads"
-                />
+                <div class="chart-container-with-objective">
+                  <div 
+                    class="objective-icon"
+                    @mouseenter="showObjectiveTooltip('downloads')"
+                    @mouseleave="hideObjectiveTooltip"
+                  >
+                    <span v-if="isDownloadsObjectiveMet" class="icon-success">✅</span>
+                    <span v-else class="icon-pending">⏳</span>
+                  </div>
+                  <div 
+                    v-if="tooltipVisible === 'downloads'" 
+                    class="objective-tooltip"
+                  >
+                    <div class="tooltip-content">
+                      <strong>Objetivo: 15.000 finales de año</strong>
+                      <div>Actual: {{ totalDownloads.toLocaleString() }}</div>
+                      <div>Restante: {{ (15000 - totalDownloads).toLocaleString() }}</div>
+                      <div :class="isDownloadsObjectiveMet ? 'status-success' : 'status-pending'">
+                        {{ isDownloadsObjectiveMet ? '✅ Objetivo cumplido' : '⏳ En progreso' }}
+                      </div>
+                    </div>
+                  </div>
+                  <downloads-chart 
+                    :data="downloadsData" 
+                    :current-value="totalDownloads"
+                  />
+                </div>
               </div>
             </ion-col>
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
                 <!-- 2. Gráfico de Chart.js - Evaluación por aspectos (ESTRELLA) -->
-                <div class="chart-container">
-                  <h3>Evaluación de la App</h3>
-                  <div class="kpi-value">{{ averageRating }}<span class="unit">/5</span></div>
-                  <div class="chart-wrapper">
-                    <canvas ref="ratingChart"></canvas>
+                <div class="chart-container-with-objective">
+                  <div 
+                    class="objective-icon"
+                    @mouseenter="showObjectiveTooltip('rating')"
+                    @mouseleave="hideObjectiveTooltip"
+                  >
+                    <span v-if="isRatingObjectiveMet" class="icon-success">✅</span>
+                    <span v-else class="icon-pending">⏳</span>
                   </div>
-                  <div class="rating-legend">
-                    <div class="legend-item">
-                      <span class="legend-color" style="background-color: rgba(240, 138, 36, 0.8)"></span>
-                      <span>Puntuación actual</span>
+                  <div 
+                    v-if="tooltipVisible === 'rating'" 
+                    class="objective-tooltip"
+                  >
+                    <div class="tooltip-content">
+                      <strong>Objetivo: Valoración > 4.5</strong>
+                      <div>Actual: {{ averageRating }}/5</div>
+                      <div :class="isRatingObjectiveMet ? 'status-success' : 'status-pending'">
+                        {{ isRatingObjectiveMet ? '✅ Objetivo cumplido' : '⏳ Necesita mejorar' }}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="chart-container">
+                    <h3>Evaluación de la App</h3>
+                    <div class="kpi-value">{{ averageRating }}<span class="unit">/5</span></div>
+                    <div class="chart-wrapper">
+                      <canvas ref="ratingChart"></canvas>
+                    </div>
+                    <div class="rating-legend">
+                      <div class="legend-item">
+                        <span class="legend-color" style="background-color: rgba(240, 138, 36, 0.8)"></span>
+                        <span>Puntuación actual</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -45,17 +90,40 @@
             <ion-col size="12" size-md="6" size-lg="4">
               <div class="dashboard-card">
                 <!-- 3. Gráfico de ApexCharts - Usuarios activos en creación de mazos (AHORA EN TIEMPO REAL) -->
-                <div class="chart-container">
-                  <div class="chart-header">
-                    <h3>Usuarios activos en creación de mazos</h3>
-                    <div class="live-badge">
-                      <div class="pulse"></div>
-                      <span>En vivo</span>
+                <div class="chart-container-with-objective">
+                  <div 
+                    class="objective-icon"
+                    @mouseenter="showObjectiveTooltip('users')"
+                    @mouseleave="hideObjectiveTooltip"
+                  >
+                    <span v-if="isUsersObjectiveMet" class="icon-success">✅</span>
+                    <span v-else class="icon-pending">⏳</span>
+                  </div>
+                  <div 
+                    v-if="tooltipVisible === 'users'" 
+                    class="objective-tooltip"
+                  >
+                    <div class="tooltip-content">
+                      <strong>Objetivo: 3.500 próximo mes</strong>
+                      <div>Actual: {{ activeUsers.toLocaleString() }}</div>
+                      <div>Restante: {{ Math.max(0, 3500 - activeUsers).toLocaleString() }}</div>
+                      <div :class="isUsersObjectiveMet ? 'status-success' : 'status-pending'">
+                        {{ isUsersObjectiveMet ? '✅ Objetivo cumplido' : '⏳ En progreso' }}
+                      </div>
                     </div>
                   </div>
-                  <div class="kpi-value">{{ activeUsers }}<span class="unit">usuarios</span></div>
-                  <div class="chart-wrapper">
-                    <div ref="activeUsersChart"></div>
+                  <div class="chart-container">
+                    <div class="chart-header">
+                      <h3>Usuarios activos en creación de mazos</h3>
+                      <div class="live-badge">
+                        <div class="pulse"></div>
+                        <span>En vivo</span>
+                      </div>
+                    </div>
+                    <div class="kpi-value">{{ activeUsers }}<span class="unit">usuarios</span></div>
+                    <div class="chart-wrapper">
+                      <div ref="activeUsersChart"></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -83,11 +151,35 @@
             <ion-col size="12" size-md="4">
               <div class="dashboard-card">
                 <!-- 5. Gráfico de feedback -->
-                <div class="chart-container">
-                  <h3>Respuestas de feedback</h3>
-                  <div class="kpi-value">{{ feedbackResponses }}<span class="unit">respuestas</span></div>
-                  <div class="chart-wrapper">
-                    <div ref="feedbackChart"></div>
+                <div class="chart-container-with-objective">
+                  <div 
+                    class="objective-icon"
+                    @mouseenter="showObjectiveTooltip('feedback')"
+                    @mouseleave="hideObjectiveTooltip"
+                  >
+                    <span v-if="isFeedbackObjectiveMet" class="icon-success">✅</span>
+                    <span v-else class="icon-pending">⏳</span>
+                  </div>
+                  <div 
+                    v-if="tooltipVisible === 'feedback'" 
+                    class="objective-tooltip"
+                  >
+                    <div class="tooltip-content">
+                      <strong>Objetivo: 500 respuestas totales</strong>
+                      <strong>Mantener 90% positivas</strong>
+                      <div>Respuestas: {{ feedbackResponses }}/500</div>
+                      <div>Positivas: 90% (objetivo: 90%)</div>
+                      <div :class="isFeedbackObjectiveMet ? 'status-success' : 'status-pending'">
+                        {{ isFeedbackObjectiveMet ? '✅ Objetivo cumplido' : '⏳ En progreso' }}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="chart-container">
+                    <h3>Respuestas de feedback</h3>
+                    <div class="kpi-value">{{ feedbackResponses }}<span class="unit">respuestas</span></div>
+                    <div class="chart-wrapper">
+                      <div ref="feedbackChart"></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -101,7 +193,7 @@
 
 <script>
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonGrid, IonRow, IonCol, IonButtons, IonMenuButton } from '@ionic/vue';
-import { defineComponent, ref, onMounted, onUnmounted } from 'vue';
+import { defineComponent, ref, onMounted, onUnmounted, computed } from 'vue';
 import Chart from 'chart.js/auto';
 import * as echarts from 'echarts';
 import ApexCharts from 'apexcharts';
@@ -127,6 +219,24 @@ export default defineComponent({
     const activeUsers = ref(3245);
     const conversionRate = ref(8.3);
     const feedbackResponses = ref(427);
+    
+    // Estado del tooltip
+    const tooltipVisible = ref(null);
+    
+    // Computed properties para verificar objetivos
+    const isDownloadsObjectiveMet = computed(() => totalDownloads.value >= 15000);
+    const isRatingObjectiveMet = computed(() => averageRating.value > 4.5);
+    const isUsersObjectiveMet = computed(() => activeUsers.value >= 3500);
+    const isFeedbackObjectiveMet = computed(() => feedbackResponses.value >= 500 && 90 >= 90); // 90% positivas
+    
+    // Funciones para manejar tooltips
+    const showObjectiveTooltip = (type) => {
+      tooltipVisible.value = type;
+    };
+    
+    const hideObjectiveTooltip = () => {
+      tooltipVisible.value = null;
+    };
     
     // Datos para los gráficos
     const downloadsData = ref([
@@ -739,7 +849,14 @@ export default defineComponent({
       ratingChart,
       activeUsersChart,
       conversionChart,
-      feedbackChart
+      feedbackChart,
+      tooltipVisible,
+      isDownloadsObjectiveMet,
+      isRatingObjectiveMet,
+      isUsersObjectiveMet,
+      isFeedbackObjectiveMet,
+      showObjectiveTooltip,
+      hideObjectiveTooltip
     };
   }
 });
@@ -780,6 +897,106 @@ export default defineComponent({
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Nuevo contenedor para gráficos con objetivos */
+.chart-container-with-objective {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Icono de objetivo */
+.objective-icon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  cursor: pointer;
+  font-size: 18px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(5px);
+}
+
+.chart-container-with-objective:hover .objective-icon {
+  opacity: 1;
+}
+
+.icon-success {
+  color: #00E396;
+  filter: drop-shadow(0 0 4px rgba(0, 227, 150, 0.5));
+}
+
+.icon-pending {
+  color: #FEB019;
+  filter: drop-shadow(0 0 4px rgba(254, 176, 25, 0.5));
+}
+
+/* Tooltip de objetivo */
+.objective-tooltip {
+  position: absolute;
+  top: 45px;
+  right: 8px;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.95);
+  border: 1px solid #F08A24;
+  border-radius: 8px;
+  padding: 12px;
+  min-width: 200px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  animation: fadeInTooltip 0.2s ease-out;
+}
+
+@keyframes fadeInTooltip {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tooltip-content {
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.tooltip-content strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #F08A24;
+  font-size: 13px;
+}
+
+.tooltip-content div {
+  margin-bottom: 3px;
+}
+
+.status-success {
+  color: #00E396;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.status-pending {
+  color: #FEB019;
+  font-weight: 600;
+  margin-top: 6px;
 }
 
 .chart-header {
@@ -913,6 +1130,15 @@ h3 {
 @media (min-width: 768px) {
   .dashboard-card {
     height: 350px;
+  }
+}
+
+/* Ajustes responsivos para tooltips */
+@media (max-width: 768px) {
+  .objective-tooltip {
+    right: 8px;
+    left: 8px;
+    min-width: auto;
   }
 }
 </style>
